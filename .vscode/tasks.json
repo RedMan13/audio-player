@@ -1,0 +1,26 @@
+{
+    "tasks": [
+        {
+            "type": "cppbuild",
+            "label": "build",
+            "command": "/usr/bin/g++",
+            "args": [
+                "${workspaceFolder}/AudioPlayer.cpp",
+                "-lao", "-lsndfile",
+                "-o", "${workspaceFolder}/dist/built"
+            ],
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "Builds the app"
+        }
+    ],
+    "version": "2.0.0"
+}
