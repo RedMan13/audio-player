@@ -4,6 +4,7 @@
 #include <sndfile.h>
 #include <math.h>
 #include <sys/ioctl.h>
+#include <vector>
 
 // max buffer size, normally the buffer will ensure the file is devided into one second 
 // chunks, except if the requested size excedes this limit
@@ -14,9 +15,13 @@ int driver;
 int numFrames;
 int frame;
 int frameRate;
+int playing = 0;
+int scrollAdvance = 0;
 std::string title;
 std::string artist;
-std::string playlist[];
+std::vector<char *> playlist;
+bool loop = true;
+bool shuffle = true;
 
 winsize getTerminalSize() {
     winsize out;
@@ -37,16 +42,54 @@ std::string framesToString(int frames) {
 }
 void drawGUI() {
     winsize size = getTerminalSize();
-
-    float per = (float)frame / (float)numFrames;
+  
+    float prog = ((float)frame / (float)numFrames) * size.ws_col;
     std::string left = framesToString(frame) + " " + title;
     std::string right = "By: " + artist + " " + framesToString(numFrames);
-    std::cout << "\x1b[1;1H\x1b[2K";
+    std::cout << "\x1b[0m\x1b[2K";
+    if ((left.length() + right.length()) > size.ws_col) {
+        left = framesToString(frame) + " ";
+        right = " " + framesToString(numFrames);
+
+        // draw the scrolling text banner
+        std::string scroller = title + "; By: " + artist + "      ";
+        std::cout << "\x1b[1;" << left.length() << "H";
+        scrollAdvance++;
+        int scrollArea = size.ws_col - (left.length() + right.length());
+        int charIdx = (scrollAdvance % scroller.length());
+        for (int j = 0; j < scroller.length(); j++) {
+            std::cout << scroller[charIdx];
+            charIdx = (charIdx +1) % scroller.length();
+        }
+    }
+    std::cout << "\x1b[1;1H";
     std::cout << left;
     std::cout << "\x1b[1;" << (size.ws_col - right.length()) +1 << "H";
-    std::cout << right << "\n";
-    std::cout << std::string((int)((size.ws_col +1) * per), '=');
-    std::cout << std::string((int)((size.ws_col +1) - (size.ws_col * per)), '-');
+    std::cout << right << "\n\x1b[97m";
+    bool hasFlipped = false;
+    for (int i = 0; i < size.ws_col; i++) {
+        if (hasFlipped) {
+            std::cout << "─";
+            continue;
+        }
+        if (i >= prog) {
+            hasFlipped = true;
+            if ((prog - i) < -0.25 && (prog - i) > -0.75)
+                std::cout << "╾";
+            else if ((prog - i) < -0.75)
+                std::cout << "─";
+            else if ((prog - i) > -0.25)
+                std::cout << "━";
+            std::cout << "\x1b[90m";
+            continue;
+        }
+        std::cout << "━";
+    }
+    for (int i = 0; i < playlist.size(); i++) {
+        if (playing == i) std::cout << "\x1b[97m";
+        else std::cout << "\x1b[90m";
+        std::cout << "\n" << playlist[i];
+    }
 }
 
 void playFile(char *fileName) {
@@ -82,10 +125,14 @@ void playFile(char *fileName) {
     frameRate = fileFormat.samplerate;
     numFrames = fileFormat.frames;
     frame = 0;
-    artist = sf_get_string(file, SF_STR_ARTIST);
-    title = sf_get_string(file, SF_STR_TITLE);
+    const char *artistChars = sf_get_string(file, SF_STR_ARTIST);
+    const char *titleChars = sf_get_string(file, SF_STR_TITLE);
+    if (artistChars == NULL) artist = "Unknown";
+    else artist = artistChars;
+    if (titleChars == NULL) title = fileName;
+    else title = titleChars;
     // manually pipe data between sndfile and ao
-    int frameCount = fileFormat.samplerate > MAX_BUFFER ? MAX_BUFFER : fileFormat.samplerate;
+    int frameCount = (fileFormat.samplerate / 2) > MAX_BUFFER ? MAX_BUFFER : (fileFormat.samplerate / 2);
     int arrayLength = frameCount * fileFormat.channels;
     short *buffer = new short[arrayLength];
     int iter = ceil((float)(fileFormat.frames) / (float)(frameCount));
@@ -102,10 +149,29 @@ void playFile(char *fileName) {
     ao_close(device);
 }
 
-int main() {
+void shufflePlaylist() {
+    for (int i = 0; i < playlist.size(); i++) {
+        int target = ((double)random() / 2147483647.0) * playlist.size();
+        auto temp = playlist[target];
+        playlist[target] = playlist[target];
+        playlist[target] = temp;
+    }
+}
+
+int main(int argc, char *argv[]) {
     ao_initialize();
-    title = sf_version_string();
     driver = ao_default_driver_id();
-    playFile("./bad-apple.wav");
+    playlist.push_back("./trainrolling.wav");
+    playlist.push_back("./bad-apple.wav");
+    if (shuffle) shufflePlaylist();
+    do {
+        playFile(playlist[playing]);
+        playing++;
+        if (!loop && playing >= playlist.size()) break;
+        if (loop && playing >= playlist.size()) {
+            playing = 0;
+            if (shuffle) shufflePlaylist();
+        }
+    } while (true);
     ao_shutdown();
 }
