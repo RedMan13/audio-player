@@ -6,8 +6,9 @@
             "command": "/usr/bin/g++",
             "args": [
                 "${workspaceFolder}/AudioPlayer.cpp",
-                "-lao", "-lsndfile",
-                "-o", "${workspaceFolder}/dist/built"
+                "-lao", "-lsndfile", "-lncurses",
+                "-o", "${workspaceFolder}/dist/built",
+                "-g"
             ],
             "options": {
                 "cwd": "${fileDirname}"
