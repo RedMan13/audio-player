@@ -66,7 +66,8 @@ void drawGUI() {
     scrollAdvance++;
     std::cout << "\x1b[0m\x1b[2J";
     int songs = playlist->songs.size();
-    for (int i = playing - (size.ws_row / 2); i < songs && y < size.ws_row; i++) {
+    int height = size.ws_row;
+    for (int i = playing - (height / 2); i < songs && y < height; i++) {
         y++;
         if (i < 0) continue;
         std::string left = framesToString(frame);
@@ -130,9 +131,10 @@ void drawGUI() {
         }
         std::cout << "\x1b[24m";
     }
-    if (pause) std::cout << "\x1b[90m\x1b[3m\x1b[" << (size.ws_row / 2) << ";1Hpaused\x1b[0m";
-    if (loop) std::cout << "\x1b[90m\x1b[3m\x1b[" << (size.ws_row / 2) << ";" << (size.ws_col -3) << "Hloop\x1b[0m";
-    std::cout << "\x1b[" << y << ":1H" << "\n";
+
+    if (pause) std::cout << "\x1b[90m\x1b[3m\x1b[" << (height / 2) << ";1Hpaused\x1b[0m";
+    if (loop) std::cout << "\x1b[90m\x1b[3m\x1b[" << (height / 2) << ";" << (size.ws_col -3) << "Hloop\x1b[0m";
+    std::cout << "\x1b[" << size.ws_row -1 << ":1H" << "\n";
 }
 
 bool runInputs = true;
@@ -210,6 +212,20 @@ void inputProc() {
     endwin();
 }
 
+short *buffer;
+int arrayLength;
+bool isOnFirstBuffer = true;
+bool needsChunk = true;
+bool runDecoder = true;
+void decoderThread(SNDFILE *file) {
+    runDecoder = true;
+    while (runDecoder) {
+        if (!needsChunk) continue;
+        buffer = new short[arrayLength];
+        arrayLength = sf_read_short(file, buffer, arrayLength);
+        needsChunk = false;
+    }
+}
 void playFile(std::string fileName, bool setMeta) {
     SF_INFO fileFormat;
     SNDFILE *file = sf_open(fileName.c_str(), SFM_READ, &fileFormat);
@@ -310,11 +326,13 @@ void playFile(std::string fileName, bool setMeta) {
     const char *titleChars = sf_get_string(file, SF_STR_TITLE);
     // manually pipe data between sndfile and ao
     int frameCount = (fileFormat.samplerate / 3) > MAX_BUFFER ? MAX_BUFFER : (fileFormat.samplerate / 3);
-    int arrayLength = frameCount * fileFormat.channels;
-    short *buffer = new short[arrayLength];
+    arrayLength = frameCount * fileFormat.channels;
     int iter = ceil((float)(fileFormat.frames) / (float)(frameCount));
+    std::thread decoder(decoderThread, file);
 
     for (int i = 0; i < iter; i++) {
+        // wait for a new buffer to appear
+        if (buffer == NULL) { i--; continue; }
         if (pause) { i--; continue; }
         if (nextSong != 0) break;
         if (seekTo != 0) {
@@ -324,10 +342,12 @@ void playFile(std::string fileName, bool setMeta) {
             sf_seek(file, frame, SF_SEEK_SET);
             seekTo = 0;
         }
-        arrayLength = sf_read_short(file, buffer, arrayLength);
+        needsChunk = true;
         ao_play(device, (char*)buffer, arrayLength * (format.bits / 8));
         frame += arrayLength / fileFormat.channels;
     }
+    runDecoder = false;
+    decoder.join();
 
     // done playing: close the file and the audio interface
     sf_close(file);
