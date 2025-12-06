@@ -21,12 +21,12 @@ int frame;
 int frameRate;
 int playing = 0;
 int scrollAdvance = 0;
-std::string title;
-std::string artist;
+PlaylistParser *lists;
 Playlist *playlist;
 bool loop = false;
 bool shuffle = false;
 bool single = false;
+bool pause = false;
 
 winsize getTerminalSize() {
     winsize out;
@@ -34,6 +34,19 @@ winsize getTerminalSize() {
     ioctl(1, TIOCGWINSZ, &out);
 
     return out;
+}
+
+std::string hexMap = "0123456789ABCDEF";
+int strLen(std::string str) {
+    int len = 0;
+    for (int i = 0; i < str.length(); i++) {
+        len++;
+        if (!(str[i] & 0x80)) continue;
+        if ((str[i] & 0xE0) == 0xC0) i++;
+        if ((str[i] & 0xF0) == 0xE0) i++;
+        if ((str[i] & 0xF8) == 0xF0) i++;
+    }
+    return len;
 }
 
 std::string framesToString(int frames) {
@@ -49,74 +62,77 @@ void drawGUI() {
     winsize size = getTerminalSize();
   
     float prog = ((float)frame / (float)numFrames) * size.ws_col;
-    std::string left = framesToString(frame) + " " + title;
-    std::string right = "By: " + artist + " " + framesToString(numFrames);
+    int y = 0;
+    scrollAdvance++;
     std::cout << "\x1b[0m\x1b[2J";
-    if ((left.length() + right.length()) > size.ws_col) {
-        left = framesToString(frame) + " ";
-        right = " " + framesToString(numFrames);
-
-        // draw the scrolling text banner
-        std::string scroller = title + ";  By: " + artist + "            ";
-        std::cout << "\x1b[1;" << left.length() << "H";
-        scrollAdvance++;
-        int scrollArea = size.ws_col - (left.length() + right.length());
-        int charIdx = (scrollAdvance % scroller.length());
-        for (int j = 0; j < scroller.length(); j++) {
-            std::cout << scroller[charIdx];
-            charIdx = (charIdx +1) % scroller.length();
-        }
-    }
-    std::cout << "\x1b[1;1H";
-    std::cout << left;
-    std::cout << "\x1b[1;" << (size.ws_col - right.length()) +1 << "H";
-    std::cout << right << "\n\x1b[97m\x1b[2;1H";
-    bool hasFlipped = false;
-    for (int i = 0; i < size.ws_col; i++) {
-        if (hasFlipped) {
-            std::cout << "─";
-            continue;
-        }
-        if (i >= prog) {
-            hasFlipped = true;
-            if ((prog - i) < -0.25 && (prog - i) > -0.75)
-                std::cout << "╾";
-            else if ((prog - i) < -0.75)
-                std::cout << "─";
-            else if ((prog - i) > -0.25)
-                std::cout << "━";
-            std::cout << "\x1b[90m";
-            continue;
-        }
-        std::cout << "━";
-    }
-    std::cout << "\x1b[3;1H\x1b[0m";
-    std::cout << std::string(((float)size.ws_col - 7.0) / 2, ' ');
-    std::cout << "Up Next\n";
-    if (single) return;
-    int y = 4;
-    bool firstLine = true;
-    for (int i = playing +1; i < playlist->songs.size() && y < size.ws_row; i++) {
-        std::string line = "  " + playlist->songs[i]->title;
-        line += std::string(size.ws_col - (line.length() % size.ws_col), ' ');
-        if (firstLine) std::cout << "\x1b[97m";
+    int songs = playlist->songs.size();
+    for (int i = playing - (size.ws_row / 2); i < songs && y < size.ws_row; i++) {
+        y++;
+        if (i < 0) continue;
+        std::string left = framesToString(frame);
+        std::string right = framesToString(numFrames);
+        if (i != playing) { left = ""; right = ""; }
+        left += std::string(10.0 - left.length() <= 0 ? left.length() +1 : 10 - left.length(), ' ');
+        right = std::string(10.0 - right.length() <= 0 ? right.length() +1 : 10 - right.length(), ' ') + right;
+        std::string line;
+        int wouldBeWidth = left.length() + right.length() + 5 + playlist->songs[i]->title.length() + playlist->songs[i]->artist.length();
         std::cout << "\x1b[" << y << ";1H";
-        int height = ceil((float)line.length() / (float)size.ws_col);
-        for (int i = 0, x = 0, ya = 1; i < line.length(); i++) {
-            if (ya == height && x == 0 && firstLine)
-                std::cout << "\x1b[4m";
-            std::cout << line[i];
-            x++;
-            if (x >= size.ws_col) {
-                x = 0;
-                ya++;
-                y++;
+        if (i == playing) std::cout << "\x1b[97m";
+        else std::cout << "\x1b[90m";
+        if (wouldBeWidth > size.ws_col && i == playing) {
+            line = left;
+
+            // draw the scrolling text banner
+            std::string scroller = ";  By: " + playlist->songs[i]->artist + "            " + playlist->songs[i]->title;
+            int scrollArea = size.ws_col - (left.length() + right.length());
+            int scrollLen = strLen(scroller);
+            int charIdx = (scrollAdvance % scrollLen);
+            bool opened = false;
+            for (int j = 0; j < scrollArea; j++) {
+                // caught int he middle of a multi-parter, skip out until we are not
+                if ((scroller[charIdx] & 0xC0) == 0x80 && !opened) {
+                    charIdx++;
+                    j--;
+                    continue;
+                }
+                // still special bit high, and its not int he middle, so its an opener
+                if (scroller[charIdx] & 0x80) opened = true;
+                line += scroller[charIdx];
+                charIdx = (charIdx +1) % scrollLen;
+            }
+            line += right;
+        } else {
+            bool rightShrunk = false;
+            left += playlist->songs[i]->title;
+            int titleLen = strLen(playlist->songs[i]->title);
+            int artistLen = strLen(playlist->songs[i]->artist);
+            int leftLen = strLen(left);
+            if (((artistLen + 6 + right.length()) + leftLen) >= size.ws_col) {
+                if (leftLen > (size.ws_col / 2))
+                    left = left.substr(0, (size.ws_col / 2) - 4) + "... ";
+                if ((artistLen + 6 + right.length()) > (size.ws_col / 2)) {
+                    right = "By: " + playlist->songs[i]->artist.substr(0, (size.ws_col / 2) - (8 + right.length())) + "... " + right;
+                    rightShrunk = true;
+                }
+            }
+            if (!rightShrunk) right = "By: " + playlist->songs[i]->artist + right;
+            line = left + std::string(size.ws_col - (strLen(right) + strLen(left)), ' ') + right;
+        }
+        bool hasFlipped = false;
+        if (i == playing) std::cout << "\x1b[4m";
+        for (int j = 0; j < line.length(); j++) {
+            std::cout << line[j];
+            if (j >= prog && !hasFlipped) {
+                std::cout << "\x1b[24m";
+                hasFlipped = true;
+                continue;
             }
         }
-        std::cout << "\n";
-        if (firstLine) std::cout << "\x1b[90m\x1b[24m";
-        firstLine = false;
+        std::cout << "\x1b[24m";
     }
+    if (pause) std::cout << "\x1b[90m\x1b[3m\x1b[" << (size.ws_row / 2) << ";1Hpaused\x1b[0m";
+    if (loop) std::cout << "\x1b[90m\x1b[3m\x1b[" << (size.ws_row / 2) << ";" << (size.ws_col -3) << "Hloop\x1b[0m";
+    std::cout << "\x1b[" << y << ":1H" << "\n";
 }
 
 bool runInputs = true;
@@ -125,17 +141,49 @@ int nextSong = 0;
 // this gets run under a seperate thread due to weird blocking shenanigans
 void inputProc() {
     initscr();
+    // noecho();
     int stage = 0;
     while (runInputs) {
+        timeout(250);
         int key = getch();
+        drawGUI();
         if (key == -1) continue;
-        std::cout << "\x1b[2K";
         switch (stage) {
         case 0:
             switch (key) {
             case '\x1b':
                 stage = 1;
                 break;
+            case 'l':
+                loop = !loop;
+                break;
+            case ' ':
+                pause = !pause;
+                break;
+            case 's': {
+                Song *currentSong = playlist->songs[playing];
+                lists->shufflePlaylist(playlist->id);
+                shuffle = true;
+                for (int i = 0; i < playlist->songs.size(); i++) {
+                    if (playlist->songs[i] == currentSong) {
+                        playing = i;
+                        break;
+                    }
+                }
+                break;
+            }
+            case 'S': {
+                Song *currentSong = playlist->songs[playing];
+                lists->sortPlaylist(playlist->id);
+                shuffle = false;
+                for (int i = 0; i < playlist->songs.size(); i++) {
+                    if (playlist->songs[i] == currentSong) {
+                        playing = i;
+                        break;
+                    }
+                }
+                break;
+            }
             }
             break;
         case 1:
@@ -260,19 +308,14 @@ void playFile(std::string fileName, bool setMeta) {
     frame = 0;
     const char *artistChars = sf_get_string(file, SF_STR_ARTIST);
     const char *titleChars = sf_get_string(file, SF_STR_TITLE);
-    if (setMeta) {
-        if (artistChars == NULL) artist = "Unknown";
-        else artist = artistChars;
-        if (titleChars == NULL) title = fileName;
-        else title = titleChars;
-    }
     // manually pipe data between sndfile and ao
-    int frameCount = (fileFormat.samplerate / 4) > MAX_BUFFER ? MAX_BUFFER : (fileFormat.samplerate / 4);
+    int frameCount = (fileFormat.samplerate / 3) > MAX_BUFFER ? MAX_BUFFER : (fileFormat.samplerate / 3);
     int arrayLength = frameCount * fileFormat.channels;
     short *buffer = new short[arrayLength];
     int iter = ceil((float)(fileFormat.frames) / (float)(frameCount));
 
     for (int i = 0; i < iter; i++) {
+        if (pause) { i--; continue; }
         if (nextSong != 0) break;
         if (seekTo != 0) {
             frame += seekTo;
@@ -282,7 +325,6 @@ void playFile(std::string fileName, bool setMeta) {
             seekTo = 0;
         }
         arrayLength = sf_read_short(file, buffer, arrayLength);
-        drawGUI();
         ao_play(device, (char*)buffer, arrayLength * (format.bits / 8));
         frame += arrayLength / fileFormat.channels;
     }
@@ -293,8 +335,8 @@ void playFile(std::string fileName, bool setMeta) {
 }
 
 int main(int argc, char *argv[]) {
-    PlaylistParser lists = PlaylistParser();
-    playlist = lists.getRoot();
+    lists = new PlaylistParser();
+    playlist = lists->getRoot();
     if (argc > 1) {
         std::string option = argv[1];
         if (option == "help") {
@@ -303,11 +345,11 @@ int main(int argc, char *argv[]) {
         }
         // load in an entire folder of songs as a playlist
         if (option == "categorize") {
-            Playlist *list = lists.getRoot();
-            if (argc >= 4) list = lists.getPlaylist(argv[3]);
+            Playlist *list = lists->getRoot();
+            if (argc >= 4) list = lists->getPlaylist(argv[3]);
             for (const auto &entry : std::filesystem::directory_iterator(argv[2]))
-                lists.addFromPath((char *)entry.path().c_str(), list->id);
-            lists.saveToDisk();
+                lists->addFromPath((char *)entry.path().c_str(), list->id);
+            lists->saveToDisk();
             return 0;
         }
         if (option == "versions") {
@@ -319,41 +361,40 @@ int main(int argc, char *argv[]) {
             ao_initialize();
             single = true;
             playFile(argv[2], true);
-            ao_shutdown();
             runInputs = false;
+            gui.join();
+            ao_shutdown();
             return 0;
         }
         if (option == "sort") {
-            Playlist *list = lists.getRoot();
-            if (argc >= 3) list = lists.getPlaylist(argv[2]);
-            lists.sortPlaylist(list->id);
-            lists.saveToDisk();
+            Playlist *list = lists->getRoot();
+            if (argc >= 3) list = lists->getPlaylist(argv[2]);
+            lists->sortPlaylist(list->id);
+            lists->saveToDisk();
             return 0;
         }
         if (option == "shuffle") {
-            Playlist *list = lists.getRoot();
-            if (argc >= 3) list = lists.getPlaylist(argv[2]);
-            lists.shufflePlaylist(list->id);
-            lists.saveToDisk();
+            Playlist *list = lists->getRoot();
+            if (argc >= 3) list = lists->getPlaylist(argv[2]);
+            lists->shufflePlaylist(list->id);
+            lists->saveToDisk();
             return 0;
         }
         if (option == "artist") {
-            playlist = lists.getArtist(argv[2]);
+            playlist = lists->getArtist(argv[2]);
         } else if (option == "album") {
-            playlist = lists.getAlbum(argv[2]);
+            playlist = lists->getAlbum(argv[2]);
         } else if (option == "playlist") {
-            playlist = lists.getPlaylist(argv[2]);
+            playlist = lists->getPlaylist(argv[2]);
         }
     }
     if (playlist->songs.size() <= 0) return 0;
     std::thread gui(inputProc);
     ao_initialize();
     driver = ao_default_driver_id();
-    if (shuffle) lists.shufflePlaylist(playlist->id);
+    if (shuffle) lists->shufflePlaylist(playlist->id);
     do {
         if (!loop && playing >= playlist->songs.size()) break;
-        title = playlist->songs[playing]->title;
-        artist = playlist->songs[playing]->artist;
         playFile(playlist->songs[playing]->path, false);
         if (nextSong != 0) playing += nextSong;
         else playing++;
@@ -361,9 +402,10 @@ int main(int argc, char *argv[]) {
         nextSong = 0;
         if (loop && playing >= playlist->songs.size()) {
             playing = 0;
-            if (shuffle) lists.shufflePlaylist(playlist->id);
+            if (shuffle) lists->shufflePlaylist(playlist->id);
         }
     } while (true);
     runInputs = false;
+    gui.join();
     ao_shutdown();
 }

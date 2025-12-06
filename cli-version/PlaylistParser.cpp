@@ -213,7 +213,7 @@ class PlaylistParser {
                     ": " << esc(list->songs[i]->title, true) << "\n";
             list = list->next;
             while (list != NULL) {
-                metaFile << "/ " << esc(list->name, false) << "\n";
+                metaFile << "\n/ " << esc(list->name, false) << "\n";
                 for (int i = 0; i < list->songs.size(); i++) 
                     metaFile << "| " << esc(list->songs[i]->path, true) << "\n";
                 list = list->next;
@@ -232,6 +232,7 @@ PlaylistParser::PlaylistParser() {
     playlists = item;
     bool inName;
     while (getline(metaFile, line)) {
+        if (line.length() <= 0) continue;
         switch (line[0]) {
         case ' ': continue;
         case '#': continue;
