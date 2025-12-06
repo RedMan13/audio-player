@@ -60,6 +60,10 @@ class PlaylistParser {
             }
             return false;
         }
+        std::string getConfigPath() {
+            std::string root = getenv("HOME");
+            return root + "/.playlists";
+        }
     public:
         PlaylistParser();
         Playlist *getRoot() { return playlists; }
@@ -199,7 +203,7 @@ class PlaylistParser {
             if (playlists != target) target->songs.push_back(song);
         }
         void saveToDisk() {
-            std::ofstream metaFile(".playlists");
+            std::ofstream metaFile(getConfigPath());
             if (!metaFile.is_open()) {
                 std::cerr << "No playlists file could be made/found; " << errno;
                 return;
@@ -224,7 +228,7 @@ class PlaylistParser {
 };
 
 PlaylistParser::PlaylistParser() {
-    std::ifstream metaFile(".playlists");
+    std::ifstream metaFile(getConfigPath());
     std::string line;
     Playlist *item = new Playlist();
     item->name = "Root";

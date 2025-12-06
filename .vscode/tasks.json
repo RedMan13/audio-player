@@ -7,6 +7,7 @@
             "args": [
                 "${workspaceFolder}/AudioPlayer.cpp",
                 "-lao", "-lsndfile", "-lncurses",
+                "-Wwrite-strings",
                 "-o", "${workspaceFolder}/dist/built",
                 "-g"
             ],

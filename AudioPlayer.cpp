@@ -206,6 +206,7 @@ void inputProc() {
                 seekTo -= frameRate;
                 break;
             }
+            stage = 0;
             break;
         }
     }
@@ -214,7 +215,6 @@ void inputProc() {
 
 short *buffer;
 int arrayLength;
-bool isOnFirstBuffer = true;
 bool needsChunk = true;
 bool runDecoder = true;
 void decoderThread(SNDFILE *file) {
@@ -243,7 +243,7 @@ void playFile(std::string fileName, bool setMeta) {
     format.rate = fileFormat.samplerate;
     format.channels = fileFormat.channels;
     format.byte_format = AO_FMT_NATIVE;
-    format.matrix = (char*)"M";
+    format.matrix = "M";
     int *channelMap = new int[fileFormat.channels];
     if (sf_command(file, SFC_GET_CHANNEL_MAP_INFO, channelMap, fileFormat.channels * sizeof(int))) {
         char *matrix = new char[(fileFormat.channels * 3) +1];
