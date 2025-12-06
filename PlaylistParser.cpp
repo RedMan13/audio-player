@@ -185,7 +185,10 @@ class PlaylistParser {
             SNDFILE *file = sf_open(path, SFM_READ, info);
             std::string name = path;
             name = name.substr(name.find_last_of('/') +1, name.find_last_of('.'));
-            if (sf_error(file) > 0) return;
+            if (sf_error(file) > 0) {
+                std::cout << "  Could not add " + name << "\n";
+                return;
+            }
             std::cout << "Adding " << name << "\n";
             Song *song = new Song();
             song->path = path;
