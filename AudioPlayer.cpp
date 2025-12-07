@@ -28,7 +28,7 @@ bool loop = false;
 bool shuffle = false;
 bool single = false;
 bool pause = false;
-std::chrono::_V2::system_clock::time_point start;
+std::chrono::system_clock::time_point start;
 int timeToClose = 30;
 bool runInputs = true;
 int seekTo = 0;
