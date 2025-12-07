@@ -8,6 +8,7 @@
 #include <ncurses.h>
 #include <filesystem>
 #include <thread>
+#include <chrono>
 #include "./PlaylistParser.cpp"
 
 // max buffer size, normally the buffer will ensure the file is devided into one second 
@@ -27,6 +28,12 @@ bool loop = false;
 bool shuffle = false;
 bool single = false;
 bool pause = false;
+std::chrono::_V2::system_clock::time_point start;
+int timeToClose = 30;
+bool runInputs = true;
+int seekTo = 0;
+int nextSong = 0;
+bool exitApp = false;
 
 winsize getTerminalSize() {
     winsize out;
@@ -36,7 +43,6 @@ winsize getTerminalSize() {
     return out;
 }
 
-std::string hexMap = "0123456789ABCDEF";
 int strLen(std::string str) {
     int len = 0;
     for (int i = 0; i < str.length(); i++) {
@@ -49,14 +55,17 @@ int strLen(std::string str) {
     return len;
 }
 
-std::string framesToString(int frames) {
-    std::string seconds = std::to_string((int)round((float)frames / (float)frameRate) % 60);
-    std::string minutes = std::to_string((int)round(((float)frames / (float)frameRate) / 60.0) % 60);
-    std::string hours = std::to_string((int)round((((float)frames / (float)frameRate) / 60.0) / 60.0));
+std::string secondsToString(int time) {
+    std::string seconds = std::to_string(time % 60);
+    std::string minutes = std::to_string((time / 60) % 60);
+    std::string hours = std::to_string((time / 60) / 60);
     seconds = std::string(2 - seconds.length(), '0') + seconds;
     minutes = std::string(2 - minutes.length(), '0') + minutes;
     if (hours == "0") return minutes + ":" + seconds;
     return hours + ":" + minutes + ":" + seconds;
+}
+std::string framesToString(int frames) {
+    return secondsToString((int)round((float)frames / (float)frameRate));
 }
 void drawGUI() {
     winsize size = getTerminalSize();
@@ -134,21 +143,42 @@ void drawGUI() {
 
     if (pause) std::cout << "\x1b[90m\x1b[3m\x1b[" << (height / 2) << ";1Hpaused\x1b[0m";
     if (loop) std::cout << "\x1b[90m\x1b[3m\x1b[" << (height / 2) << ";" << (size.ws_col -3) << "Hloop\x1b[0m";
+    if (height > 2) {
+        if (timeToClose != -1) {
+            auto current = std::chrono::high_resolution_clock::now();
+            int since = (((current - start).count() / 1000) / 1000) / 1000;
+            if ((timeToClose - since) <= 0) {
+                exitApp = true;
+            } else {
+                std::string timeStamp = secondsToString(timeToClose - since);
+                std::cout << "\x1b[90m\x1b[3m\x1b[" << (height / 2) +2 << ";1H" << timeStamp << "\x1b[0m";
+            }
+        }
+        if (shuffle) std::cout << "\x1b[90m\x1b[3m\x1b[" << (height / 2) +2 << ";" << (size.ws_col -7) << "Hshuffle\x1b[0m";
+    }
     std::cout << "\x1b[" << size.ws_row -1 << ":1H" << "\n";
 }
 
-bool runInputs = true;
-int seekTo = 0;
-int nextSong = 0;
+int parseInt(std::string str) {
+    int out = 0;
+    int mul = 1;
+    for (int i = str.length() -1; i >= 0; i--) {
+        if (str[i] < 48 || str[i] > 58) continue;
+        out += (str[i] - 48) * mul;
+        mul *= 10;
+    }
+    return out;
+}
 // this gets run under a seperate thread due to weird blocking shenanigans
 void inputProc() {
     initscr();
-    // noecho();
+    noecho();
     int stage = 0;
     while (runInputs) {
         timeout(250);
         int key = getch();
         drawGUI();
+        if (stage > 2) stage = 0;
         if (key == -1) continue;
         switch (stage) {
         case 0:
@@ -186,6 +216,26 @@ void inputProc() {
                 }
                 break;
             }
+            case 't':
+                std::cout << "\x1b[1;1HEnter a time in the format [hours:]minutes:seconds: \x1b[1;1H\n";
+                echo();
+                char input = 0;
+                timeout(-1);
+                getstr(&input);
+                noecho();
+                std::string timeCode = &input;
+                if (timeCode.find_first_of(':') == -1) break;
+                if (timeCode.find_last_of(':') == -1) break;
+                timeToClose = 0;
+                std::string minutes = timeCode.substr(0, timeCode.find_last_of(':'));
+                if (timeCode.find_last_of(':') != timeCode.find_first_of(':')) {
+                    timeToClose += parseInt(timeCode.substr(0, timeCode.find_first_of(':'))) * 60 * 60;
+                    minutes = timeCode.substr(timeCode.find_first_of(':') +1, timeCode.find_last_of(':'));
+                }
+                timeToClose += parseInt(minutes) * 60;
+                timeToClose += parseInt(timeCode.substr(timeCode.find_last_of(':') +1));
+                start = std::chrono::high_resolution_clock::now();
+                break;
             }
             break;
         case 1:
@@ -208,6 +258,7 @@ void inputProc() {
             }
             stage = 0;
             break;
+        default: stage = 0; break;
         }
     }
     endwin();
@@ -322,8 +373,6 @@ void playFile(std::string fileName, bool setMeta) {
     frameRate = fileFormat.samplerate;
     numFrames = fileFormat.frames;
     frame = 0;
-    const char *artistChars = sf_get_string(file, SF_STR_ARTIST);
-    const char *titleChars = sf_get_string(file, SF_STR_TITLE);
     // manually pipe data between sndfile and ao
     int frameCount = (fileFormat.samplerate / 3) > MAX_BUFFER ? MAX_BUFFER : (fileFormat.samplerate / 3);
     arrayLength = frameCount * fileFormat.channels;
@@ -333,6 +382,7 @@ void playFile(std::string fileName, bool setMeta) {
     for (int i = 0; i < iter; i++) {
         // wait for a new buffer to appear
         if (buffer == NULL) { i--; continue; }
+        if (exitApp) break;
         if (pause) { i--; continue; }
         if (nextSong != 0) break;
         if (seekTo != 0) {
@@ -355,6 +405,7 @@ void playFile(std::string fileName, bool setMeta) {
 }
 
 int main(int argc, char *argv[]) {
+    start = std::chrono::high_resolution_clock::now();
     lists = new PlaylistParser();
     playlist = lists->getRoot();
     if (argc > 1) {
@@ -416,6 +467,7 @@ int main(int argc, char *argv[]) {
     do {
         if (!loop && playing >= playlist->songs.size()) break;
         playFile(playlist->songs[playing]->path, false);
+        if (exitApp) break;
         if (nextSong != 0) playing += nextSong;
         else playing++;
         if (playing < 0) playing = playlist->songs.size() -1;
