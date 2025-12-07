@@ -410,7 +410,22 @@ int main(int argc, char *argv[]) {
     if (argc > 1) {
         std::string option = argv[1];
         if (option == "help") {
-            std::cout << "Formatting key:\n() - a peice of raw text\n[] - an optional argument\ntext - arbitrary name for an argument\n\nList of commands:\n(help) - Report this list\n(versions) - Report various important versions, including the app version\n(categorize), folder[, playlist] - Load the contents of a folder into the local .playlists file\n(artist), name - Play all songs by a single artist\n(album), name - Play all songs in a single album\n(playlist), name - play all songs inside a playlist";
+            std::cout << "Formatting key:\n" << 
+                "() - a peice of raw text\n" << 
+                "[] - an optional argument\n" << 
+                "text - arbitrary name for an argument\n" << 
+                "\n" << 
+                "List of commands:\n" << 
+                "(help) - Report this list\n" << 
+                "(versions) - Report various important versions, including the app version\n" << 
+                "(categorize), folder[, playlist] - Load the contents of a folder into the local .playlists file, optionally also loading those songs into a particular playlist\n" << 
+                "(artist), name - Play all songs by a single artist\n" << 
+                "(album), name - Play all songs in a single album\n" << 
+                "(playlist), name - play all songs inside a playlist\n" << 
+                "(play) path - play a single audio file\n" <<
+                "(shuffle) playlist - shuffles a playlist then stores the result as the local playlist order\n" <<
+                "(sort) playlist - sorts a playlist a-z by title, and then stores that result to disk\n" <<
+                "(add) path[, playlist] - adds a single file to the local .playlists, optionally also adds it to a given playlist";
             return 0;
         }
         // load in an entire folder of songs as a playlist
@@ -419,6 +434,13 @@ int main(int argc, char *argv[]) {
             if (argc >= 4) list = lists->getPlaylist(argv[3]);
             for (const auto &entry : std::filesystem::directory_iterator(argv[2]))
                 lists->addFromPath((char *)entry.path().c_str(), list->id);
+            lists->saveToDisk();
+            return 0;
+        }
+        if (option == "add") {
+            Playlist *list = lists->getRoot();
+            if (argc >= 4) list = lists->getPlaylist(argv[3]);
+            lists->addFromPath(argv[2], list->id);
             lists->saveToDisk();
             return 0;
         }
