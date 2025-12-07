@@ -28,7 +28,7 @@ bool loop = false;
 bool shuffle = false;
 bool single = false;
 bool pause = false;
-std::chrono::system_clock::time_point start;
+auto start = std::chrono::high_resolution_clock::now();
 int timeToClose = 30;
 bool runInputs = true;
 int seekTo = 0;
@@ -405,7 +405,6 @@ void playFile(std::string fileName, bool setMeta) {
 }
 
 int main(int argc, char *argv[]) {
-    start = std::chrono::high_resolution_clock::now();
     lists = new PlaylistParser();
     playlist = lists->getRoot();
     if (argc > 1) {
