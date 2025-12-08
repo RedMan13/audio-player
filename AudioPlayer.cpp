@@ -154,7 +154,7 @@ void drawGUI() {
                 std::cout << "\x1b[90m\x1b[3m\x1b[" << (height / 2) +2 << ";1H" << timeStamp << "\x1b[0m";
             }
         }
-        if (shuffle) std::cout << "\x1b[90m\x1b[3m\x1b[" << (height / 2) +2 << ";" << (size.ws_col -7) << "Hshuffle\x1b[0m";
+        if (shuffle) std::cout << "\x1b[90m\x1b[3m\x1b[" << (height / 2) +2 << ";" << (size.ws_col -6) << "Hshuffle\x1b[0m";
     }
     std::cout << "\x1b[" << size.ws_row -1 << ":1H" << "\n";
 }
@@ -265,14 +265,19 @@ void inputProc() {
 }
 
 short *buffer;
+short *firstBuffer;
+short *secondBuffer;
+bool onFirstBuffer = true;
 int arrayLength;
 bool needsChunk = true;
 bool runDecoder = true;
 void decoderThread(SNDFILE *file) {
     runDecoder = true;
+    firstBuffer = new short[arrayLength];
+    secondBuffer = new short[arrayLength];
     while (runDecoder) {
         if (!needsChunk) continue;
-        buffer = new short[arrayLength];
+        buffer = onFirstBuffer ? firstBuffer : secondBuffer;
         arrayLength = sf_read_short(file, buffer, arrayLength);
         needsChunk = false;
     }
