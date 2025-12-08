@@ -29,7 +29,7 @@ bool shuffle = false;
 bool single = false;
 bool pause = false;
 auto start = std::chrono::high_resolution_clock::now();
-int timeToClose = 30;
+int timeToClose = -1;
 bool runInputs = true;
 int seekTo = 0;
 int nextSong = 0;
@@ -425,7 +425,18 @@ int main(int argc, char *argv[]) {
                 "(play) path - play a single audio file\n" <<
                 "(shuffle) playlist - shuffles a playlist then stores the result as the local playlist order\n" <<
                 "(sort) playlist - sorts a playlist a-z by title, and then stores that result to disk\n" <<
-                "(add) path[, playlist] - adds a single file to the local .playlists, optionally also adds it to a given playlist";
+                "(add) path[, playlist] - adds a single file to the local .playlists, optionally also adds it to a given playlist\n" <<
+                "\n" <<
+                "List of key binds:\n" <<
+                "space - pauses/plays music\n" <<
+                "'l' - enables looping\n" <<
+                "'s' - shuffles the playlist, does not save\n" <<
+                "shift + 's' - sorts the playlist, does not save\n" <<
+                "'t' - opens a prompt to set for how long music should play\n" << 
+                "arrow up - starts the previous song, will always roll to the end if at the top most song\n" <<
+                "arrow down - starts the next song, will only roll to the previous if looping is enabled\n" <<
+                "arrow left - rewinds the song by ~1 second\n" <<
+                "arrow right - fast forwards the song by ~1 second\n";
             return 0;
         }
         // load in an entire folder of songs as a playlist
