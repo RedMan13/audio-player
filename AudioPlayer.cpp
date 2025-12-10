@@ -239,10 +239,6 @@ void inputProc() {
             }
             break;
         case 1:
-            if (key != '[') {
-                stage = 0;
-                break;
-            }
             stage = 2;
             break;
         case 2:
@@ -255,10 +251,9 @@ void inputProc() {
             case 'D':
                 seekTo -= frameRate;
                 break;
+            default: stage = 0; break;
             }
-            stage = 0;
             break;
-        default: stage = 0; break;
         }
     }
     endwin();

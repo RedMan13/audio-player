@@ -178,22 +178,23 @@ class PlaylistParser {
                 playlist->songs[target] = temp;
             }
         }
+
         // note; this will load the file directly with sndfile
-        void addFromPath(char *path, int playlist) {
-            if (getSong(path)) return;
+        Song *addFromPath(char *path, int playlist) {
+            if (getSong(path)) return NULL;
             SF_INFO *info;
             SNDFILE *file = sf_open(path, SFM_READ, info);
             std::string name = path;
-            name = name.substr(name.find_last_of('/') +1, name.find_last_of('.'));
+            name = name.substr(name.find_last_of('/') +1, name.find_last_of('.') -2);
             if (sf_error(file) > 0) {
                 std::cout << "  Could not add " << name << "; " << sf_strerror(file) << "\n";
-                return;
+                return NULL;
             }
             std::cout << "Adding " << name << "\n";
             Song *song = new Song();
             song->path = path;
             song->artist = "Unknown";
-            song->album = "None";
+            song->album = "";
             song->title = name;
             const char *artist = sf_get_string(file, SF_STR_ARTIST);
             const char *album = sf_get_string(file, SF_STR_ALBUM);
@@ -201,8 +202,39 @@ class PlaylistParser {
             if (artist != NULL) song->artist = artist;
             if (album != NULL) song->album = album;
             if (title != NULL) song->title = title;
+            addNewSong(song, playlist, false);
+
+            return song;
+        }
+        Song *createNewSong(std::string path, std::string artist, std::string album, std::string title, int playlist) {
+            Song *song = new Song();
+            song->path = path;
+            song->artist = artist;
+            song->album = album;
+            song->title = title;
+            addNewSong(song, playlist, true);
+
+            return song;
+        }
+        Song *createNewSong(std::string path, std::string artist, std::string album, int playlist) {
+            std::string name = path.substr(path.find_last_of('/') +1, path.find_last_of('.') -2);
+            return createNewSong(path, artist, album, name, playlist);
+        }
+        Song *createNewSong(std::string path, std::string artist, int playlist) {
+            std::string name = path.substr(path.find_last_of('/') +1, path.find_last_of('.') -2);
+            return createNewSong(path, artist, "", name, playlist);
+        }
+        Song *createNewSong(std::string path, int playlist) {
+            std::string name = path.substr(path.find_last_of('/') +1, path.find_last_of('.') -2);
+            return createNewSong(path, "Unknown", "", name, playlist);
+        }
+        Song *createNewSong(int playlist) { return createNewSong("", "", "", "", playlist); }
+        void addNewSong(Song *song, int playlist, bool unsafe = true) {
+            if (unsafe && getSong(song->path) != NULL) return;
             Playlist *target = getPlaylist(playlist);
             playlists->songs.push_back(song);
+            getArtist(song->artist)->songs.push_back(song);
+            getArtist(song->album)->songs.push_back(song);
             if (playlists != target) target->songs.push_back(song);
         }
         void saveToDisk() {
@@ -214,10 +246,10 @@ class PlaylistParser {
             Playlist *list = playlists;
             // root wont be inserted by name, as inserting it by name would make it not root
             for (int i = 0; i < list->songs.size(); i++)
-                metaFile << "- " + esc(list->songs[i]->path, true) <<
-                    "? " << esc(list->songs[i]->artist, true) <<
-                    "/ " << esc(list->songs[i]->album, true) <<
-                    ": " << esc(list->songs[i]->title, true) << "\n";
+                metaFile << "; path: " + esc(list->songs[i]->path, true) <<
+                    "; artist: " << esc(list->songs[i]->artist, true) <<
+                    "; album: " << esc(list->songs[i]->album, true) <<
+                    "; title: " << esc(list->songs[i]->title, true) << "\n";
             list = list->next;
             while (list != NULL) {
                 metaFile << "\n/ " << esc(list->name, false) << "\n";
@@ -255,48 +287,49 @@ PlaylistParser::PlaylistParser() {
             }
             item->songs.clear();
             break;
-        default:
+        case '|': {
+            if (playlists == item) break;
+            std::string path = "";
+            inName = false;
+            for (int i = 1; i < line.length(); i++) {
+                if (!inName && line[i] == ' ') continue;
+                inName = true;
+                path += line[i];
+            }
+            item->songs.push_back(getSong(path));
+            break;
+        }
+        case ';':
             Song *song = new Song();
             inName = false;
-            std::string collector;
+            std::string key = "";
+            std::string value = "";
             int mode = 0;
             for (int i = 0; i < line.length(); i++) {
                 switch (line[i]) {
                 // reference by path
-                case '|': inName = false; mode = 4; continue;
+                case ';': inName = false; key = ""; mode = 0; continue;
                 // path
-                case '-': inName = false; mode = 0; continue;
+                case ':': inName = false; value = ""; mode = 1; continue;
                 // artist
-                case '?': inName = false; mode = 1; continue;
-                // album
-                case '/': inName = false; mode = 2; continue;
-                // title
-                case ':': inName = false; mode = 3; continue;
                 case '\\': i++;
                 default:
                     if (!inName && line[i] == ' ') continue;
                     inName = true;
                     switch (mode) {
-                    case 0: song->path += line[i]; break;
-                    case 1: song->artist += line[i]; break;
-                    case 2: song->album += line[i]; break;
-                    case 3: song->title += line[i]; break;
-                    case 4:
-                        collector += line[i];
-                        if (i == (line.length() -1)) {
-                            song = getSong(collector);
-                            collector = "";
-                        }
-                        break;
+                    case 0: key += line[i]; break;
+                    case 1: value += line[i]; break;
                     }
                     break;
                 }
+                if ((i == line.length() -1 || line[i +1] == ';')) {
+                    if (key == "path") song->path = value;
+                    if (key == "artist") song->artist = value;
+                    if (key == "album") song->album = value;
+                    if (key == "title") song->title = value;
+                }
             }
-            item->songs.push_back(song);
-            // always push to root!!
-            if (item != playlists) playlists->songs.push_back(song);
-            getArtist(song->artist)->songs.push_back(song);
-            getArtist(song->album)->songs.push_back(song);
+            addNewSong(song, item->id, false);
             break;
         }
     }
