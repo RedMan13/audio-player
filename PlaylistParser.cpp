@@ -3,6 +3,8 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#ifndef PARSER_LOADED
+#define PARSER_LOADED
 
 struct Song {
     std::string path;
@@ -334,3 +336,4 @@ PlaylistParser::PlaylistParser() {
         }
     }
 }
+#endif

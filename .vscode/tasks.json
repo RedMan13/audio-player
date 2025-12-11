@@ -5,7 +5,7 @@
             "label": "build",
             "command": "/usr/bin/g++",
             "args": [
-                "${workspaceFolder}/AudioPlayer.cpp",
+                "${workspaceFolder}/main.cpp",
                 "-lao", "-lsndfile", "-lncurses",
                 "-Wwrite-strings",
                 "-o", "${workspaceFolder}/dist/built",
