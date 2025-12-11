@@ -75,9 +75,9 @@ int main(int argc, char *argv[]) {
             return 0;
         }
         if (argc > 3) {
-            std::string guiType = argv[1];
+            std::string guiType = argv[3];
             if (guiType == "none") {
-
+                player.gui = new InterfaceGUI();
             } else if (guiType == "window") {
                 player.gui = new GLGUI(&player, lists);
             } else {

@@ -43,6 +43,7 @@ void AudioPlayer::playFile(std::string fileName, bool setMeta) {
         std::cerr << sf_strerror(file) << "\n";
         return;
     }
+    sf_command(file, SFC_SET_CLIPPING, NULL, SF_TRUE);
 
     // make format metadata for ao
     ao_sample_format format;
@@ -138,10 +139,11 @@ void AudioPlayer::playFile(std::string fileName, bool setMeta) {
     numFrames = fileFormat.frames;
     frame = 0;
     // manually pipe data between sndfile and ao
-    int frameCount = (fileFormat.samplerate / 3) > MAX_BUFFER ? MAX_BUFFER : (fileFormat.samplerate / 3);
+    int frameCount = (fileFormat.samplerate / 4) > MAX_BUFFER ? MAX_BUFFER : (fileFormat.samplerate / 4);
     arrayLength = frameCount * fileFormat.channels;
     int iter = ceil((float)(fileFormat.frames) / (float)(frameCount));
     std::thread decoder(std::bind(&AudioPlayer::decoderThread, this, file), file);
+    int bytesPerSample = ceil(format.bits / 8);
 
     for (int i = 0; i < iter; i++) {
         // wait for a new buffer to appear
@@ -158,7 +160,8 @@ void AudioPlayer::playFile(std::string fileName, bool setMeta) {
         }
         char *playingBuffer = (char *)buffer;
         needsChunk = true;
-        ao_play(device, playingBuffer, arrayLength * (format.bits / 8));
+        // std::this_thread::sleep_for(std::chrono::milliseconds(250));
+        ao_play(device, playingBuffer, arrayLength * bytesPerSample);
         frame += arrayLength / fileFormat.channels;
     }
     runDecoder = false;
