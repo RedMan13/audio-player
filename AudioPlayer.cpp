@@ -156,8 +156,9 @@ void AudioPlayer::playFile(std::string fileName, bool setMeta) {
             sf_seek(file, frame, SF_SEEK_SET);
             gui->seekTo = 0;
         }
+        char *playingBuffer = (char *)buffer;
         needsChunk = true;
-        ao_play(device, (char*)buffer, arrayLength * (format.bits / 8));
+        ao_play(device, playingBuffer, arrayLength * (format.bits / 8));
         frame += arrayLength / fileFormat.channels;
     }
     runDecoder = false;

@@ -1,6 +1,7 @@
 #include "./AudioPlayer.cpp"
 #include "./PlaylistParser.cpp"
 #include "./TerminalGUI.cpp"
+#include "./GLGUI.cpp"
 
 PlaylistParser *lists;
 int main(int argc, char *argv[]) {
@@ -19,10 +20,10 @@ int main(int argc, char *argv[]) {
                 "(help) - Report this list\n" << 
                 "(versions) - Report various important versions, including the app version\n" << 
                 "(categorize), folder[, playlist] - Load the contents of a folder into the local .playlists file, optionally also loading those songs into a particular playlist\n" << 
-                "(artist), name - Play all songs by a single artist\n" << 
-                "(album), name - Play all songs in a single album\n" << 
-                "(playlist), name - play all songs inside a playlist\n" << 
-                "(play) path - play a single audio file\n" <<
+                "(artist), name[, guiType] - Play all songs by a single artist, guiType is one of none, terminal, or window and defines where the player will be rendered, defaults to terminal\n" << 
+                "(album), name[, guiType] - Play all songs in a single album, guiType is one of none, terminal, or window and defines where the player will be rendered, defaults to terminal\n" << 
+                "(playlist), name[, guiType] - play all songs inside a playlist, guiType is one of none, terminal, or window and defines where the player will be rendered, defaults to terminal\n" << 
+                "(play) path[, guiType] - play a single audio file, guiType is one of none, terminal, or window and defines where the player will be rendered\n" <<
                 "(shuffle) playlist - shuffles a playlist then stores the result as the local playlist order\n" <<
                 "(sort) playlist - sorts a playlist a-z by title, and then stores that result to disk\n" <<
                 "(add) path[, playlist] - adds a single file to the local .playlists, optionally also adds it to a given playlist\n" <<
@@ -73,7 +74,18 @@ int main(int argc, char *argv[]) {
             lists->saveToDisk();
             return 0;
         }
-        player.gui = new TerminalGUI(&player, lists);
+        if (argc > 3) {
+            std::string guiType = argv[1];
+            if (guiType == "none") {
+
+            } else if (guiType == "window") {
+                player.gui = new GLGUI(&player, lists);
+            } else {
+                player.gui = new TerminalGUI(&player, lists);
+            }
+        } else {
+            player.gui = new TerminalGUI(&player, lists);
+        }
         if (option == "artist") {
             player.playPlaylist(lists->getArtist(argv[2]));
         } else if (option == "album") {
