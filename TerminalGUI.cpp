@@ -239,8 +239,8 @@ class TerminalGUI : public InterfaceGUI {
                     case 'D':
                         seekTo -= player->frameRate;
                         break;
-                    default: stage = 0; break;
                     }
+                    stage = 0;
                     break;
                 }
             }

@@ -14,6 +14,7 @@ class InterfaceGUI {
         int nextSong = 0;
         bool exitApp = false;
         bool single = false;
+        bool stopPlaying = false;
         AudioPlayer *player;
         PlaylistParser *lists;
 };

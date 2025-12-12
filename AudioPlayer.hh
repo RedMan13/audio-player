@@ -10,6 +10,7 @@
 #include <thread>
 #include <chrono>
 #include <functional>
+#include <mutex>
 #include "./PlaylistParser.cpp"
 #ifndef PLAYER_HEADER_LOADED
 #define PLAYER_HEADER_LOADED
@@ -28,7 +29,7 @@ class AudioPlayer {
         short *secondBuffer;
         bool onFirstBuffer = true;
         int arrayLength;
-        bool needsChunk = true;
+        std::mutex needsChunk;
         bool runDecoder = true;
         void decoderThread(SNDFILE *file);
     public:

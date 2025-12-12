@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <thread>
 #include <chrono>
+#include <semaphore>
 #include <functional>
 #include "./PlaylistParser.cpp"
 #ifndef PLAYER_LOADED
@@ -20,10 +21,9 @@ void AudioPlayer::decoderThread(SNDFILE *file) {
     firstBuffer = new short[arrayLength];
     secondBuffer = new short[arrayLength];
     while (runDecoder) {
-        if (!needsChunk) continue;
         buffer = onFirstBuffer ? firstBuffer : secondBuffer;
         arrayLength = sf_read_short(file, buffer, arrayLength);
-        needsChunk = false;
+        needsChunk.lock();
     }
 }
 AudioPlayer::AudioPlayer(PlaylistParser *lists) {
@@ -144,12 +144,11 @@ void AudioPlayer::playFile(std::string fileName, bool setMeta) {
     int iter = ceil((float)(fileFormat.frames) / (float)(frameCount));
     std::thread decoder(std::bind(&AudioPlayer::decoderThread, this, file), file);
     int bytesPerSample = ceil(format.bits / 8);
-
     for (int i = 0; i < iter; i++) {
         // wait for a new buffer to appear
         if (buffer == NULL) { i--; continue; }
-        if (gui->exitApp) break;
         if (gui->pause) { i--; continue; }
+        if (gui->exitApp) break;
         if (gui->nextSong != 0) break;
         if (gui->seekTo != 0) {
             frame += gui->seekTo;
@@ -159,12 +158,12 @@ void AudioPlayer::playFile(std::string fileName, bool setMeta) {
             gui->seekTo = 0;
         }
         char *playingBuffer = (char *)buffer;
-        needsChunk = true;
-        // std::this_thread::sleep_for(std::chrono::milliseconds(250));
+        needsChunk.unlock();
         ao_play(device, playingBuffer, arrayLength * bytesPerSample);
         frame += arrayLength / fileFormat.channels;
     }
     runDecoder = false;
+    needsChunk.unlock();
     decoder.join();
 
     // done playing: close the file and the audio interface
