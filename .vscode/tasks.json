@@ -6,7 +6,8 @@
             "command": "/usr/bin/g++",
             "args": [
                 "${workspaceFolder}/main.cpp",
-                "-lao", "-lsndfile", "-lncurses",
+                "-I/usr/local/include/freetype2",
+                "-lao", "-lsndfile", "-lncurses", "-lX11", "-lXext", "-lfontconfig", "-lXft",
                 "-Wwrite-strings",
                 "-o", "${workspaceFolder}/dist/built",
                 "-g"

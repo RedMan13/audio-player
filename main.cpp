@@ -1,7 +1,7 @@
 #include "./AudioPlayer.cpp"
 #include "./PlaylistParser.cpp"
 #include "./TerminalGUI.cpp"
-#include "./GLGUI.cpp"
+#include "./XorgGUI.cpp"
 
 PlaylistParser *lists;
 int main(int argc, char *argv[]) {
@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
             if (guiType == "none") {
                 player.gui = new InterfaceGUI();
             } else if (guiType == "window") {
-                player.gui = new GLGUI(&player, lists);
+                player.gui = new XorgGUI(&player, lists);
             } else {
                 player.gui = new TerminalGUI(&player, lists);
             }

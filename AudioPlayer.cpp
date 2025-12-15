@@ -137,6 +137,7 @@ void AudioPlayer::playFile(std::string fileName, bool setMeta) {
     }
     frameRate = fileFormat.samplerate;
     numFrames = fileFormat.frames;
+    channels = fileFormat.channels;
     frame = 0;
     // manually pipe data between sndfile and ao
     int frameCount = (fileFormat.samplerate / 4) > MAX_BUFFER ? MAX_BUFFER : (fileFormat.samplerate / 4);

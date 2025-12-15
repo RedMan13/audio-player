@@ -24,11 +24,9 @@ class InterfaceGUI;
 class AudioPlayer {
     private:
         int driver;
-        short *buffer;
         short *firstBuffer;
         short *secondBuffer;
         bool onFirstBuffer = true;
-        int arrayLength;
         std::mutex needsChunk;
         bool runDecoder = true;
         void decoderThread(SNDFILE *file);
@@ -40,7 +38,10 @@ class AudioPlayer {
         std::string title;
         int numFrames;
         int frame;
+        int channels;
         int frameRate;
+        short *buffer;
+        int arrayLength;
         int playing = 0;
         Playlist *playlist;
         InterfaceGUI *gui;
