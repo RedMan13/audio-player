@@ -1,5 +1,7 @@
 curl https://github.com/libsndfile/libsndfile/releases/download/1.2.2/libsndfile-1.2.2.tar.xz -o ./libsndfile-1.2.2.tar.xz
-
+rm -rf ./libsndfile-1.2.2.tar.xz
+tar -xf ./libsndfile-1.2.2.tar.xz
+cd ./libsndfile-1.2.2
 mkdir -p '/data/data/com.termux/files/usr/lib'
 bash ./libtool   --mode=install install -c   src/libsndfile.la '/data/data/com.termux/files/usr/lib'
 install -c src/.libs/libsndfile.so.1.0.37 /data/data/com.termux/files/usr/lib/libsndfile.so.1.0.37
@@ -27,3 +29,6 @@ mkdir -p '/data/data/com.termux/files/usr/share/man/man1'
 install -c -m 644 man/sndfile-info.1 man/sndfile-play.1 man/sndfile-convert.1 man/sndfile-cmp.1 man/sndfile-metadata-get.1 man/sndfile-metadata-set.1 man/sndfile-concat.1 man/sndfile-interleave.1 man/sndfile-deinterleave.1 man/sndfile-salvage.1 '/data/data/com.termux/files/usr/share/man/man1'
 mkdir -p '/data/data/com.termux/files/usr/lib/pkgconfig'
 install -c -m 644 sndfile.pc '/data/data/com.termux/files/usr/lib/pkgconfig'
+pkg install libsndfile
+main.cpp",
+g++ ./main.cpp -I/usr/local/include/freetype2 -lao -lsndfile -lncurses -lX11 -lXext -lfontconfig -lXft -Wwrite-strings -o ./dist/built -g
