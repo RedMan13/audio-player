@@ -30,5 +30,4 @@ install -c -m 644 man/sndfile-info.1 man/sndfile-play.1 man/sndfile-convert.1 ma
 mkdir -p '/data/data/com.termux/files/usr/lib/pkgconfig'
 install -c -m 644 sndfile.pc '/data/data/com.termux/files/usr/lib/pkgconfig'
 pkg install libsndfile
-main.cpp",
 g++ ./main.cpp -I/usr/local/include/freetype2 -lao -lsndfile -lncurses -lX11 -lXext -lfontconfig -lXft -Wwrite-strings -o ./dist/built -g
