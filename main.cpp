@@ -1,7 +1,9 @@
 #include "./AudioPlayer.cpp"
 #include "./PlaylistParser.cpp"
 #include "./TerminalGUI.cpp"
+#ifdef XORG_WINDOW
 #include "./XorgGUI.cpp"
+#endif
 
 PlaylistParser *lists;
 int main(int argc, char *argv[]) {
@@ -78,9 +80,13 @@ int main(int argc, char *argv[]) {
             std::string guiType = argv[3];
             if (guiType == "none") {
                 player.gui = new InterfaceGUI();
-            } else if (guiType == "window") {
+            }
+            #ifdef XORG_WINDOW
+            else if (guiType == "window") {
                 player.gui = new XorgGUI(&player, lists);
-            } else {
+            }
+            #endif
+            else {
                 player.gui = new TerminalGUI(&player, lists);
             }
         } else {
