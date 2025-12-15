@@ -1,0 +1,1 @@
+g++ ./main.cpp -I/usr/local/include/freetype2 -march=x86-64 -DXORG_WINDOW -lao -lsndfile -lncurses -lX11 -lXext -lfontconfig -lXft -Wwrite-strings -o ./dist/x86/play
