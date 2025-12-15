@@ -80,13 +80,10 @@ class XorgGUI : public InterfaceGUI {
             XGCValues values = {};
             values.line_width = 1;
             XChangeGC(mainDisplay, context, GCLineWidth, &values);
-            if (player->playing != wasPlaying) {
-                wasPlaying = player->playing;
-                showingFrame = 0;
-                textNeedsDraw = true;
-            }
             if (player->buffer != NULL) {
                 int chunkLen = player->frameRate * delta;
+                // showing frame is clearly invalid, reset to be in-bounds
+                if (showingFrame > (player->frame + player->arrayLength)) showingFrame = player->frame;
                 if (showingFrame < player->frame) showingFrame = player->frame;
                 int bufferStart = showingFrame - player->frame;
                 for (int j = 0; j < player->channels; j++) {
