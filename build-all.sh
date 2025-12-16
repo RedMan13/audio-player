@@ -1,4 +1,0 @@
-g++ ./main.cpp -I/usr/local/include/freetype2 -std=c++17 -march=x86-64 -lao -lsndfile -lncurses -lX11 -lXext -lfontconfig -lXft -Wwrite-strings -o ./dist/x86/play-nowin
-g++ ./main.cpp -I/usr/local/include/freetype2 -std=c++17 -march=native -lao -lsndfile -lncurses -lX11 -lXext -lfontconfig -lXft -Wwrite-strings -o ./dist/play-nowin
-g++ ./main.cpp -I/usr/local/include/freetype2 -std=c++17 -march=x86-64 -DXORG_WINDOW -lao -lsndfile -lncurses -lX11 -lXext -lfontconfig -lXft -Wwrite-strings -o ./dist/x86/play
-g++ ./main.cpp -I/usr/local/include/freetype2 -std=c++17 -march=native -DXORG_WINDOW -lao -lsndfile -lncurses -lX11 -lXext -lfontconfig -lXft -Wwrite-strings -o ./dist/play
