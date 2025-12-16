@@ -1,0 +1,2 @@
+g++ ./main.cpp -I/usr/local/include/freetype2 -std=c++17 -march=x86-64 -DXORG_WINDOW -lao -lsndfile -lncurses -Wwrite-strings -o ./dist/x86-64/play
+g++ ./main.cpp -I/usr/local/include/freetype2 -std=c++17 -march=native -DXORG_WINDOW -lao -lsndfile -lncurses -Wwrite-strings -o ./dist/play
