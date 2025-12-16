@@ -149,7 +149,7 @@ class TerminalGUI : public InterfaceGUI {
             if (loop) std::cout << "\x1b[90m\x1b[3m\x1b[" << (height / 2) << ";" << (size.ws_col -3) << "Hloop\x1b[0m";
             if (height > 2) {
                 if (timeToClose != -1) {
-                    auto current = std::chrono::high_resolution_clock::now();
+                    auto current = std::chrono::system_clock::now();
                     int since = (((current - start).count() / 1000) / 1000) / 1000;
                     if ((timeToClose - since) <= 0) {
                         exitApp = true;
@@ -228,7 +228,7 @@ class TerminalGUI : public InterfaceGUI {
                         }
                         timeToClose += parseInt(minutes) * 60;
                         timeToClose += parseInt(timeCode.substr(timeCode.find_last_of(':') +1));
-                        start = std::chrono::high_resolution_clock::now();
+                        start = std::chrono::system_clock::now();
                         break;
                     }
                     break;

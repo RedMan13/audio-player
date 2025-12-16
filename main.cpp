@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
             return 0;
         }
         if (option == "versions") {
-            std::cout << "AudioPlayer-1.12.20\n" << sf_version_string() << "\n";
+            std::cout << "AudioPlayer-1.12.28\n" << sf_version_string() << "\n";
             return 0;
         }
         if (option == "sort") {
