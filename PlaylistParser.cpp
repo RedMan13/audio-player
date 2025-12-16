@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <chrono>
 #ifndef PARSER_LOADED
 #define PARSER_LOADED
 
@@ -268,6 +269,7 @@ PlaylistParser::PlaylistParser() {
     std::ifstream metaFile(getConfigPath());
     std::string line;
     Playlist *item = new Playlist();
+    srandom(std::chrono::high_resolution_clock::now().time_since_epoch().count());
     item->name = "Root";
     item->id = idIncr++;
     playlists = item;
