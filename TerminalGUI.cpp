@@ -71,12 +71,16 @@ class TerminalGUI : public InterfaceGUI {
             float prog = ((float)player->frame / (float)player->numFrames) * size.ws_col;
             int y = 0;
             scrollAdvance++;
-            std::cout << "\x1b[0m\x1b[2J";
+            std::cout << "\x1b[0m";
             int songs = player->playlist->songs.size();
             int height = size.ws_row;
             for (int i = player->playing - (height / 2); i < songs && y < height; i++) {
                 y++;
-                if (i < 0) continue;
+                std::cout << "\x1b[" << y << ";1H";
+                if (i < 0) {
+                    std::cout << "\x1b[2K";
+                    continue;
+                }
                 std::string left = framesToString(player->frame);
                 std::string right = framesToString(player->numFrames);
                 if (i != player->playing) { left = ""; right = ""; }
@@ -84,7 +88,6 @@ class TerminalGUI : public InterfaceGUI {
                 right = std::string(10.0 - right.length() <= 0 ? right.length() +1 : 10 - right.length(), ' ') + right;
                 std::string line;
                 int wouldBeWidth = left.length() + right.length() + 5 + player->playlist->songs[i]->title.length() + player->playlist->songs[i]->artist.length();
-                std::cout << "\x1b[" << y << ";1H";
                 if (i == player->playing) std::cout << "\x1b[97m";
                 else std::cout << "\x1b[90m";
                 if (wouldBeWidth > size.ws_col && i == player->playing) {
@@ -100,6 +103,7 @@ class TerminalGUI : public InterfaceGUI {
                         // caught int he middle of a multi-parter, skip out until we are not
                         if ((scroller[charIdx] & 0xC0) == 0x80 && !opened) {
                             charIdx++;
+                            scrollAdvance++;
                             j--;
                             continue;
                         }
@@ -128,13 +132,15 @@ class TerminalGUI : public InterfaceGUI {
                 }
                 bool hasFlipped = false;
                 if (i == player->playing) std::cout << "\x1b[4m";
+                int c = 0;
                 for (int j = 0; j < line.length(); j++) {
                     std::cout << line[j];
-                    if (j >= prog && !hasFlipped) {
+                    if (c >= prog && !hasFlipped && (line[j] & 0b11000000) != 0b10000000 && !(line[j] & 0b10000000)) {
                         std::cout << "\x1b[24m";
                         hasFlipped = true;
                         continue;
                     }
+                    if ((line[j] & 0b11000000) != 0b10000000) c++;
                 }
                 std::cout << "\x1b[24m";
             }
@@ -254,7 +260,7 @@ class TerminalGUI : public InterfaceGUI {
         }
         ~TerminalGUI() {
             runInputs = false;
-            // gui.join();
+            gui.join();
         }
 };
 #endif

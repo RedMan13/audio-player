@@ -17,7 +17,6 @@
 #include "./InterfaceGUI.cpp"
 
 void AudioPlayer::decoderThread(SNDFILE *file) {
-    runDecoder = true;
     firstBuffer = new short[arrayLength];
     secondBuffer = new short[arrayLength];
     while (runDecoder) {
@@ -143,6 +142,7 @@ void AudioPlayer::playFile(std::string fileName, bool setMeta) {
     int frameCount = (fileFormat.samplerate / 4) > MAX_BUFFER ? MAX_BUFFER : (fileFormat.samplerate / 4);
     arrayLength = frameCount * fileFormat.channels;
     int iter = ceil((float)(fileFormat.frames) / (float)(frameCount));
+    runDecoder = true;
     std::thread decoder(std::bind(&AudioPlayer::decoderThread, this, file), file);
     int bytesPerSample = ceil(format.bits / 8);
     for (int i = 0; i < iter; i++) {
