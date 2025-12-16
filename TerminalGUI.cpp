@@ -17,7 +17,7 @@ class AudioPlayer;
 class TerminalGUI : public InterfaceGUI {
     private:
         bool single = false;
-        std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration> start = std::chrono::high_resolution_clock::now();
+        std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration> start = std::chrono::system_clock::now();
         int timeToClose = -1;
         bool runInputs = true;
         int scrollAdvance = 0;
