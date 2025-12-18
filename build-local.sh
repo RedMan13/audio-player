@@ -1,0 +1,1 @@
+g++ ./main.cpp -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/gdk-pixbuf-2.0 -lao -lsndfile -lncurses -lX11 -lXext -lfontconfig -lXft -lnotify -lglib-2.0 -o ./dist/play -g

@@ -1,2 +1,2 @@
-g++ ./main.cpp -I/usr/local/include/freetype2 -std=c++17 -march=x86-64 -DXORG_WINDOW -lao -lsndfile -lncurses -Wwrite-strings -o ./dist/x86-64/play
-g++ ./main.cpp -I/usr/local/include/freetype2 -std=c++17 -march=native -DXORG_WINDOW -lao -lsndfile -lncurses -Wwrite-strings -o ./dist/play
+g++ ./main.cpp -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/gdk-pixbuf-2.0 -lao -lsndfile -lncurses -lX11 -lXext -lfontconfig -lXft -lnotify -lglib-2.0 -o ./dist/x86-64/play
+./build-local.sh;

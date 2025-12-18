@@ -8,7 +8,7 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/dist/built",
+            "program": "${workspaceFolder}/dist/play",
             "args": ["playlist", "Synthbeats", "window"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
