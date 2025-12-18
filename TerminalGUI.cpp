@@ -12,6 +12,7 @@
 #include "./InterfaceGUI.cpp"
 #include "./AudioPlayer.hh"
 #include "./PlaylistParser.cpp"
+#include "./Notifier.cpp"
 
 class AudioPlayer;
 class TerminalGUI : public InterfaceGUI {
@@ -22,6 +23,7 @@ class TerminalGUI : public InterfaceGUI {
         bool runInputs = true;
         int scrollAdvance = 0;
         std::thread gui;
+        Notifier notifs;
         
         winsize getTerminalSize() {
             winsize out;
@@ -171,84 +173,85 @@ class TerminalGUI : public InterfaceGUI {
             while (runInputs) {
                 timeout(250);
                 int key = getch();
-                drawGUI();
                 if (stage > 2) stage = 0;
-                if (key == -1) continue;
-                switch (stage) {
-                case 0:
-                    switch (key) {
-                    case '\x1b':
-                        stage = 1;
-                        break;
-                    case 'l':
-                        loop = !loop;
-                        break;
-                    case ' ':
-                        pause = !pause;
-                        break;
-                    case 's': {
-                        Song *currentSong = player->playlist->songs[player->playing];
-                        lists->shufflePlaylist(player->playlist->id);
-                        shuffle = true;
-                        for (int i = 0; i < player->playlist->songs.size(); i++) {
-                            if (player->playlist->songs[i] == currentSong) {
-                                player->playing = i;
-                                break;
+                if (key != -1) {
+                    switch (stage) {
+                    case 0:
+                        switch (key) {
+                        case '\x1b':
+                            stage = 1;
+                            break;
+                        case 'l':
+                            loop = !loop;
+                            break;
+                        case ' ':
+                            pause = !pause;
+                            break;
+                        case 's': {
+                            Song *currentSong = player->playlist->songs[player->playing];
+                            lists->shufflePlaylist(player->playlist->id);
+                            shuffle = true;
+                            for (int i = 0; i < player->playlist->songs.size(); i++) {
+                                if (player->playlist->songs[i] == currentSong) {
+                                    player->playing = i;
+                                    break;
+                                }
                             }
+                            break;
                         }
-                        break;
-                    }
-                    case 'S': {
-                        Song *currentSong = player->playlist->songs[player->playing];
-                        lists->sortPlaylist(player->playlist->id);
-                        shuffle = false;
-                        for (int i = 0; i < player->playlist->songs.size(); i++) {
-                            if (player->playlist->songs[i] == currentSong) {
-                                player->playing = i;
-                                break;
+                        case 'S': {
+                            Song *currentSong = player->playlist->songs[player->playing];
+                            lists->sortPlaylist(player->playlist->id);
+                            shuffle = false;
+                            for (int i = 0; i < player->playlist->songs.size(); i++) {
+                                if (player->playlist->songs[i] == currentSong) {
+                                    player->playing = i;
+                                    break;
+                                }
                             }
+                            break;
+                        }
+                        case 't':
+                            std::cout << "\x1b[1;1HEnter a time in the format [hours:]minutes:seconds: \x1b[1;1H\n";
+                            echo();
+                            char input = 0;
+                            timeout(-1);
+                            getstr(&input);
+                            noecho();
+                            std::string timeCode = &input;
+                            if (timeCode.find_first_of(':') == -1) break;
+                            if (timeCode.find_last_of(':') == -1) break;
+                            timeToClose = 0;
+                            std::string minutes = timeCode.substr(0, timeCode.find_last_of(':'));
+                            if (timeCode.find_last_of(':') != timeCode.find_first_of(':')) {
+                                timeToClose += parseInt(timeCode.substr(0, timeCode.find_first_of(':'))) * 60 * 60;
+                                minutes = timeCode.substr(timeCode.find_first_of(':') +1, timeCode.find_last_of(':'));
+                            }
+                            timeToClose += parseInt(minutes) * 60;
+                            timeToClose += parseInt(timeCode.substr(timeCode.find_last_of(':') +1));
+                            start = std::chrono::system_clock::now();
+                            break;
                         }
                         break;
-                    }
-                    case 't':
-                        std::cout << "\x1b[1;1HEnter a time in the format [hours:]minutes:seconds: \x1b[1;1H\n";
-                        echo();
-                        char input = 0;
-                        timeout(-1);
-                        getstr(&input);
-                        noecho();
-                        std::string timeCode = &input;
-                        if (timeCode.find_first_of(':') == -1) break;
-                        if (timeCode.find_last_of(':') == -1) break;
-                        timeToClose = 0;
-                        std::string minutes = timeCode.substr(0, timeCode.find_last_of(':'));
-                        if (timeCode.find_last_of(':') != timeCode.find_first_of(':')) {
-                            timeToClose += parseInt(timeCode.substr(0, timeCode.find_first_of(':'))) * 60 * 60;
-                            minutes = timeCode.substr(timeCode.find_first_of(':') +1, timeCode.find_last_of(':'));
+                    case 1:
+                        stage = 2;
+                        break;
+                    case 2:
+                        switch (key) {
+                        case 'A': nextSong--; break;
+                        case 'B': nextSong++; break;
+                        case 'C':
+                            seekTo += player->frameRate;
+                            break;
+                        case 'D':
+                            seekTo -= player->frameRate;
+                            break;
                         }
-                        timeToClose += parseInt(minutes) * 60;
-                        timeToClose += parseInt(timeCode.substr(timeCode.find_last_of(':') +1));
-                        start = std::chrono::system_clock::now();
+                        stage = 0;
                         break;
                     }
-                    break;
-                case 1:
-                    stage = 2;
-                    break;
-                case 2:
-                    switch (key) {
-                    case 'A': nextSong--; break;
-                    case 'B': nextSong++; break;
-                    case 'C':
-                        seekTo += player->frameRate;
-                        break;
-                    case 'D':
-                        seekTo -= player->frameRate;
-                        break;
-                    }
-                    stage = 0;
-                    break;
                 }
+                drawGUI();
             }
             endwin();
         }
@@ -257,6 +260,7 @@ class TerminalGUI : public InterfaceGUI {
             gui = std::thread(std::bind(&TerminalGUI::inputProc, this));
             this->player = player;
             this->lists = lists;
+            notifs = Notifier();
         }
         ~TerminalGUI() {
             runInputs = false;
