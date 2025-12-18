@@ -16,15 +16,6 @@
 #define PLAYER_LOADED
 #include "./InterfaceGUI.cpp"
 
-void AudioPlayer::decoderThread(SNDFILE *file) {
-    firstBuffer = new short[arrayLength];
-    secondBuffer = new short[arrayLength];
-    while (runDecoder) {
-        buffer = onFirstBuffer ? firstBuffer : secondBuffer;
-        arrayLength = sf_read_short(file, buffer, arrayLength);
-        needsChunk.lock();
-    }
-}
 AudioPlayer::AudioPlayer(PlaylistParser *lists) {
     ao_initialize();
     driver = ao_default_driver_id();
@@ -142,12 +133,10 @@ void AudioPlayer::playFile(std::string fileName, bool setMeta) {
     int frameCount = (fileFormat.samplerate / 4) > MAX_BUFFER ? MAX_BUFFER : (fileFormat.samplerate / 4);
     arrayLength = frameCount * fileFormat.channels;
     int iter = ceil((float)(fileFormat.frames) / (float)(frameCount));
-    runDecoder = true;
-    std::thread decoder(std::bind(&AudioPlayer::decoderThread, this, file), file);
+    buffer = new short[arrayLength];
+
     int bytesPerSample = ceil(format.bits / 8);
     for (int i = 0; i < iter; i++) {
-        // wait for a new buffer to appear
-        if (buffer == NULL) { i--; continue; }
         if (gui->pause) { i--; continue; }
         if (gui->exitApp) break;
         if (gui->nextSong != 0) break;
@@ -158,14 +147,10 @@ void AudioPlayer::playFile(std::string fileName, bool setMeta) {
             sf_seek(file, frame, SF_SEEK_SET);
             gui->seekTo = 0;
         }
-        char *playingBuffer = (char *)buffer;
-        needsChunk.unlock();
-        ao_play(device, playingBuffer, arrayLength * bytesPerSample);
+        arrayLength = sf_read_short(file, buffer, arrayLength);
+        ao_play(device, (char *)buffer, arrayLength * bytesPerSample);
         frame += arrayLength / fileFormat.channels;
     }
-    runDecoder = false;
-    needsChunk.unlock();
-    decoder.join();
 
     // done playing: close the file and the audio interface
     sf_close(file);

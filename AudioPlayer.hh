@@ -24,12 +24,6 @@ class InterfaceGUI;
 class AudioPlayer {
     private:
         int driver;
-        short *firstBuffer;
-        short *secondBuffer;
-        bool onFirstBuffer = true;
-        std::mutex needsChunk;
-        bool runDecoder = true;
-        void decoderThread(SNDFILE *file);
     public:
         // not actual frames!!!!
         // these are the frames as defined by sndfile, as in samples
