@@ -1,1 +1,1 @@
-g++ ./main.cpp -I/usr/include/gdk-pixbuf-2.0 -lao -lsndfile -lncurses -o ./dist/play -g `pkg-config --cflags --libs dbus-c++-1` `pkg-config --cflags --libs glib-2.0`
+g++ ./main.cpp -lao -lsndfile -lncurses -lsdbus-c++ -o ./dist/play `pkg-config --cflags --libs glib-2.0`
