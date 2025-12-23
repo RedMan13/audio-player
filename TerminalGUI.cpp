@@ -10,7 +10,9 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <unistd.h>
+#if __has_include(<sdbus-c++/sdbus-c++.h>)
 #include <sdbus-c++/sdbus-c++.h>
+#endif
 #ifndef TERMINAL_LOADED
 #define TERMINAL_LOADED
 #include "./InterfaceGUI.cpp"
@@ -26,9 +28,11 @@ class TerminalGUI : public InterfaceGUI {
         bool runInputs = true;
         int scrollAdvance = 0;
         std::thread gui;
+        #if __has_include(<sdbus-c++/sdbus-c++.h>)
         sdbus::IObject *remote;
         std::string namePlate;
         int originalPlaying;
+        #endif
         
         winsize getTerminalSize() {
             winsize out;
@@ -176,6 +180,7 @@ class TerminalGUI : public InterfaceGUI {
             int stage = 0;
             runInputs = true;
 
+            #if __has_include(<sdbus-c++/sdbus-c++.h>)
             namePlate = "org.mpris.MediaPlayer2.AudioPlayer.I";
             namePlate += std::to_string(getpid());
             auto connection = sdbus::createDefaultBusConnection(namePlate);
@@ -464,11 +469,15 @@ class TerminalGUI : public InterfaceGUI {
             remotePntr->finishRegistration();
 
             connection->enterEventLoopAsync();
+            #endif
+
             while (runInputs) {
                 timeout(250);
                 int key = getch();
                 if (stage > 2) stage = 0;
+                #if __has_include(<sdbus-c++/sdbus-c++.h>)
                 std::map<std::string, sdbus::Variant> properties;
+                #endif
                 if (key != -1) {
                     switch (stage) {
                     case 0:
@@ -478,17 +487,23 @@ class TerminalGUI : public InterfaceGUI {
                             break;
                         case 'l':
                             loop = !loop;
+                            #if __has_include(<sdbus-c++/sdbus-c++.h>)
                             properties["LoopStatus"] = loop ? "Playlist" : "None";
+                            #endif
                             break;
                         case ' ':
                             pause = !pause;
+                            #if __has_include(<sdbus-c++/sdbus-c++.h>)
                             properties["PlaybackStatus"] = pause ? "Paused" : "Playing";
+                            #endif
                             break;
                         case 's': {
                             Song *currentSong = player->playlist->songs[player->playing];
                             lists->shufflePlaylist(player->playlist->id);
                             shuffle = true;
+                            #if __has_include(<sdbus-c++/sdbus-c++.h>)
                             properties["Shuffle"] = shuffle;
+                            #endif
                             for (int i = 0; i < player->playlist->songs.size(); i++) {
                                 if (player->playlist->songs[i] == currentSong) {
                                     player->playing = i;
@@ -501,7 +516,9 @@ class TerminalGUI : public InterfaceGUI {
                             Song *currentSong = player->playlist->songs[player->playing];
                             lists->sortPlaylist(player->playlist->id);
                             shuffle = false;
+                            #if __has_include(<sdbus-c++/sdbus-c++.h>)
                             properties["Shuffle"] = shuffle;
+                            #endif
                             for (int i = 0; i < player->playlist->songs.size(); i++) {
                                 if (player->playlist->songs[i] == currentSong) {
                                     player->playing = i;
@@ -546,6 +563,7 @@ class TerminalGUI : public InterfaceGUI {
                         break;
                     }
                 }
+                #if __has_include(<sdbus-c++/sdbus-c++.h>)
                 if (nextSong != 0 || player->playing != originalPlaying) {
                     originalPlaying = player->playing;
                     std::map<std::string, sdbus::Variant> newProperties;
@@ -569,6 +587,7 @@ class TerminalGUI : public InterfaceGUI {
                     signal << std::vector<std::string>();
                     remote->emitSignal(signal);
                 }
+                #endif
                 drawGUI();
             }
             endwin();
