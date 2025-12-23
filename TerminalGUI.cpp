@@ -8,6 +8,8 @@
 #include <chrono>
 #include <functional>
 #include <sys/ioctl.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <sdbus-c++/sdbus-c++.h>
 #ifndef TERMINAL_LOADED
 #define TERMINAL_LOADED
@@ -25,6 +27,8 @@ class TerminalGUI : public InterfaceGUI {
         int scrollAdvance = 0;
         std::thread gui;
         sdbus::IObject *remote;
+        std::string namePlate;
+        int originalPlaying;
         
         winsize getTerminalSize() {
             winsize out;
@@ -172,7 +176,9 @@ class TerminalGUI : public InterfaceGUI {
             int stage = 0;
             runInputs = true;
 
-            auto connection = sdbus::createDefaultBusConnection("org.mpris.MediaPlayer2.audio-player");
+            namePlate = "org.mpris.MediaPlayer2.AudioPlayer.I";
+            namePlate += std::to_string(getpid());
+            auto connection = sdbus::createDefaultBusConnection(namePlate);
 
             sdbus::ObjectPath objectPath{"/org/mpris/MediaPlayer2"};
             auto remotePntr = sdbus::createObject(*connection, std::move(objectPath));
@@ -180,36 +186,36 @@ class TerminalGUI : public InterfaceGUI {
 
             // implements org.mpris.MediaPlayer2
             remotePntr->registerMethod("Raise")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2")
                 .implementedAs([this]() {});
             remotePntr->registerMethod("Quit")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2")
                 .implementedAs([this]() { exitApp = true; });
                 
             remotePntr->registerProperty("CanQuit")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2")
                 .withGetter([this]() { return true; });
             remotePntr->registerProperty("Fullsceen")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2")
                 .withGetter([this]() { return false; })
                 .withSetter([this](bool value) {});
             remotePntr->registerProperty("CanSetFullscreen")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2")
                 .withGetter([this]() { return false; });
             remotePntr->registerProperty("CanRaise")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2")
                 .withGetter([this]() { return false; });
             remotePntr->registerProperty("HasTrackList")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
-                .withGetter([this]() { return true; });
+                .onInterface("org.mpris.MediaPlayer2")
+                .withGetter([this]() { return false; });
             remotePntr->registerProperty("Identity")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2")
                 .withGetter([this]() { return "Audio Player"; });
             remotePntr->registerProperty("DesktopEntry")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2")
                 .withGetter([this]() { return ""; });
             remotePntr->registerProperty("SupportedUriSchemes")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2")
                 .withGetter([this]() {
                     std::vector<std::string> list;
                     // list.push_back("http");
@@ -218,7 +224,7 @@ class TerminalGUI : public InterfaceGUI {
                     return list;
                 });
             remotePntr->registerProperty("SupportedMimeTypes")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2")
                 .withGetter([this]() {
                     std::vector<std::string> list;
                     // list.push_back("http");
@@ -233,37 +239,125 @@ class TerminalGUI : public InterfaceGUI {
 
             // implements org.mpris.MediaPlayer2.Player
             remotePntr->registerMethod("Next")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
-                .implementedAs([this]() { nextSong += 1; });
+                .onInterface("org.mpris.MediaPlayer2.Player")
+                .implementedAs([this]() {
+                    nextSong += 1;
+                    auto signal = remote->createSignal("org.freedesktop.DBus.Properties", "PropertiesChanged");
+                    signal << "org.mpris.MediaPlayer2.Player";
+                    std::map<std::string, sdbus::Variant> properties;
+                    std::map<std::string, sdbus::Variant> newProperties;
+                    newProperties["mpris:trackid"] = player->playlist->songs[player->playing + nextSong]->path;
+                    newProperties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000;
+                    newProperties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing + nextSong]->artist};
+                    newProperties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
+                    newProperties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;
+                    properties["Metadata"] = newProperties;
+                    properties["Position"] = 0;
+                    signal << properties;
+                    signal << std::vector<std::string>();
+                    remote->emitSignal(signal);
+                });
             remotePntr->registerMethod("Previous")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
-                .implementedAs([this]() { nextSong -= 1; });
+                .onInterface("org.mpris.MediaPlayer2.Player")
+                .implementedAs([this]() {
+                    nextSong -= 1;
+                    auto signal = remote->createSignal("org.freedesktop.DBus.Properties", "PropertiesChanged");
+                    signal << "org.mpris.MediaPlayer2.Player";
+                    std::map<std::string, sdbus::Variant> properties;
+                    std::map<std::string, sdbus::Variant> newProperties;
+                    newProperties["mpris:trackid"] = player->playlist->songs[player->playing + nextSong]->path;
+                    newProperties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000;
+                    newProperties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing + nextSong]->artist};
+                    newProperties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
+                    newProperties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;
+                    properties["Metadata"] = newProperties;
+                    properties["Position"] = 0;
+                    signal << properties;
+                    signal << std::vector<std::string>();
+                    remote->emitSignal(signal);
+                });
             remotePntr->registerMethod("Pause")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
-                .implementedAs([this]() { pause = true; });
+                .onInterface("org.mpris.MediaPlayer2.Player")
+                .implementedAs([this]() {
+                    pause = true;
+                    auto signal = remote->createSignal("org.freedesktop.DBus.Properties", "PropertiesChanged");
+                    signal << "org.mpris.MediaPlayer2.Player";
+                    std::map<std::string, sdbus::Variant> properties;
+                    properties["PlayStatus"] = "Playing";
+                    signal << properties;
+                    signal << std::vector<std::string>();
+                    remote->emitSignal(signal);
+                });
             remotePntr->registerMethod("PlayPause")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
-                .implementedAs([this]() { pause = !pause; });
+                .onInterface("org.mpris.MediaPlayer2.Player")
+                .implementedAs([this]() {
+                    pause = !pause;
+                    auto signal = remote->createSignal("org.freedesktop.DBus.Properties", "PropertiesChanged");
+                    signal << "org.mpris.MediaPlayer2.Player";
+                    std::map<std::string, sdbus::Variant> properties;
+                    properties["PlayStatus"] = pause ? "Paused" : "Playing";
+                    signal << properties;
+                    signal << std::vector<std::string>();
+                    remote->emitSignal(signal);
+                });
             remotePntr->registerMethod("Stop")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2.Player")
                 .implementedAs([this]() {
                     seekTo = -player->frame;
                     pause = true;
+                    auto signal = remote->createSignal("org.freedesktop.DBus.Properties", "PropertiesChanged");
+                    signal << "org.mpris.MediaPlayer2.Player";
+                    std::map<std::string, sdbus::Variant> properties;
+                    properties["PlayStatus"] = "Stopped";
+                    signal << properties;
+                    signal << std::vector<std::string>();
+                    remote->emitSignal(signal);
                 });
             remotePntr->registerMethod("Play")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
-                .implementedAs([this]() { pause = false; });
+                .onInterface("org.mpris.MediaPlayer2.Player")
+                .implementedAs([this]() {
+                    pause = false;
+                    auto signal = remote->createSignal("org.freedesktop.DBus.Properties", "PropertiesChanged");
+                    signal << "org.mpris.MediaPlayer2.Player";
+                    std::map<std::string, sdbus::Variant> properties;
+                    properties["PlayStatus"] = "Paused";
+                    signal << properties;
+                    signal << std::vector<std::string>();
+                    remote->emitSignal(signal);
+                });
             remotePntr->registerMethod("Seek")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
-                .implementedAs([this](int Offset) { seekTo = (((float)Offset / 1000) * player->frameRate); });
+                .onInterface("org.mpris.MediaPlayer2.Player")
+                .implementedAs([this](int Offset) {
+                    seekTo = (((float)Offset / 1000) * player->frameRate);
+                    auto signal = remote->createSignal("org.mpris.MediaPlayer2.Player", "Seeked");
+                    signal << seekTo;
+                    remote->emitSignal(signal);
+                    auto changes = remote->createSignal("org.freedesktop.DBus.Properties", "PropertiesChanged");
+                    changes << "org.mpris.MediaPlayer2.Player";
+                    std::map<std::string, sdbus::Variant> properties;
+                    properties["Position"] = player->frame + seekTo;
+                    changes << properties;
+                    changes << std::vector<std::string>();
+                    remote->emitSignal(changes);
+                });
             remotePntr->registerMethod("SetPosition")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2.Player")
                 .implementedAs([this](std::string TrackId, int Offset) {
                     if (TrackId != player->playlist->songs[player->playing]->path) return;
                     seekTo = (((float)Offset / 1000) * player->frameRate) - player->frame;
+                    auto signal = remote->createSignal("org.mpris.MediaPlayer2.Player", "Seeked");
+                    signal << seekTo;
+                    remote->emitSignal(signal);
+                    auto changes = remote->createSignal("org.freedesktop.DBus.Properties", "PropertiesChanged");
+                    changes << "org.mpris.MediaPlayer2.Player";
+                    std::map<std::string, sdbus::Variant> properties;
+                    properties["Position"] = player->frame + seekTo;
+                    changes << properties;
+                    changes << std::vector<std::string>();
+                    remote->emitSignal(changes);
                 });
             remotePntr->registerMethod("OpenUri")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2.Player")
                 .implementedAs([this](std::string Uri) {
                     int firstSlash = Uri.find('/');
                     int secondSlash = Uri.find('/', firstSlash);
@@ -272,68 +366,100 @@ class TerminalGUI : public InterfaceGUI {
                     if ((thirdSlash - secondSlash) > 1) thirdSlash = secondSlash;
                     player->playing = player->playlist->songs.size();
                     player->lists->addFromPath((char *)Uri.substr(thirdSlash).c_str(), player->playlist->id);
+                    auto signal = remote->createSignal("org.freedesktop.DBus.Properties", "PropertiesChanged");
+                    signal << "org.mpris.MediaPlayer2.Player";
+                    std::map<std::string, sdbus::Variant> properties;
+                    std::map<std::string, sdbus::Variant> newProperties;
+                    newProperties["mpris:trackid"] = player->playlist->songs[player->playing + nextSong]->path;
+                    newProperties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000;
+                    newProperties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing]->artist};
+                    newProperties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
+                    newProperties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;
+                    properties["Metadata"] = newProperties;
+                    properties["Position"] = 0;
+                    signal << properties;
+                    signal << std::vector<std::string>();
+                    remote->emitSignal(signal);
                 });
 
             remotePntr->registerSignal("Seeked")
-                .onInterface("org.sdbuscpp.Concatenator")
+                .onInterface("org.mpris.MediaPlayer2.Player")
                 .withParameters<int>("Time_In_Us");
 
             remotePntr->registerProperty("PlaybackStatus")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2.Player")
                 .withGetter([this]() { return pause ? "Paused" : "Playing"; });
             remotePntr->registerProperty("LoopStatus")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2.Player")
                 .withGetter([this]() { return loop ? "Playlist" : "None"; })
-                .withSetter([this](std::string value) { loop = value == "Playlist"; });
+                .withSetter([this](std::string value) {
+                    loop = value == "Playlist";
+                    auto signal = remote->createSignal("org.freedesktop.DBus.Properties", "PropertiesChanged");
+                    signal << "org.mpris.MediaPlayer2.Player";
+                    std::map<std::string, sdbus::Variant> properties;
+                    properties["LoopStatus"] = loop ? "Playlist" : "None";
+                    signal << properties;
+                    signal << std::vector<std::string>();
+                    remote->emitSignal(signal);
+                });
             remotePntr->registerProperty("Rate")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2.Player")
                 .withGetter([this]() { return 1.0; })
                 .withSetter([this](double value) {});
             remotePntr->registerProperty("Shuffle")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2.Player")
                 .withGetter([this]() { return shuffle; })
-                .withSetter([this](bool value) { shuffle = value; });
+                .withSetter([this](bool value) {
+                    shuffle = value;
+                    auto signal = remote->createSignal("org.freedesktop.DBus.Properties", "PropertiesChanged");
+                    signal << "org.mpris.MediaPlayer2.Player";
+                    std::map<std::string, sdbus::Variant> properties;
+                    properties["Shuffle"] = shuffle;
+                    signal << properties;
+                    signal << std::vector<std::string>();
+                    remote->emitSignal(signal);
+                });
             remotePntr->registerProperty("Metadata")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2.Player")
                 .withGetter([this]() {
                     std::map<std::string, sdbus::Variant> properties;
-                    properties["mpris:trackid"] = player->playlist->songs[player->playing]->path;
+                    properties["mpris:trackid"] = player->playlist->songs[player->playing + nextSong]->path;
                     properties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000;
-                    properties["xesam:artist"] = player->playlist->songs[player->playing]->artist;
-                    properties["xesam:album"] = player->playlist->songs[player->playing]->album;
-                    properties["xesam:title"] = player->playlist->songs[player->playing]->title;
+                    properties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing + nextSong]->artist};
+                    properties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
+                    properties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;
                     return properties;
                 });
             remotePntr->registerProperty("Volume")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2.Player")
                 .withGetter([this]() { return 1; })
                 .withSetter([this](double value) {});
             remotePntr->registerProperty("Position")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2.Player")
                 .withGetter([this]() { return ((double)player->frame / player->frameRate) * 1000; });
             remotePntr->registerProperty("MinimumRate")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2.Player")
                 .withGetter([this]() { return 1.0; });
             remotePntr->registerProperty("MaximumRate")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2.Player")
                 .withGetter([this]() { return 1.0; });
             remotePntr->registerProperty("CanGoNext")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2.Player")
                 .withGetter([this]() { return true; });
             remotePntr->registerProperty("CanGoPrevious")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2.Player")
                 .withGetter([this]() { return true; });
             remotePntr->registerProperty("CanPlay")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2.Player")
                 .withGetter([this]() { return true; });
             remotePntr->registerProperty("CanPause")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2.Player")
                 .withGetter([this]() { return true; });
             remotePntr->registerProperty("CanSeek")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2.Player")
                 .withGetter([this]() { return true; });
             remotePntr->registerProperty("CanControl")
-                .onInterface("org.mpris.MediaPlayer2.audio-player")
+                .onInterface("org.mpris.MediaPlayer2.Player")
                 .withGetter([this]() { return true; });
             remotePntr->finishRegistration();
 
@@ -342,6 +468,7 @@ class TerminalGUI : public InterfaceGUI {
                 timeout(250);
                 int key = getch();
                 if (stage > 2) stage = 0;
+                std::map<std::string, sdbus::Variant> properties;
                 if (key != -1) {
                     switch (stage) {
                     case 0:
@@ -351,14 +478,17 @@ class TerminalGUI : public InterfaceGUI {
                             break;
                         case 'l':
                             loop = !loop;
+                            properties["LoopStatus"] = loop ? "Playlist" : "None";
                             break;
                         case ' ':
                             pause = !pause;
+                            properties["PlaybackStatus"] = pause ? "Paused" : "Playing";
                             break;
                         case 's': {
                             Song *currentSong = player->playlist->songs[player->playing];
                             lists->shufflePlaylist(player->playlist->id);
                             shuffle = true;
+                            properties["Shuffle"] = shuffle;
                             for (int i = 0; i < player->playlist->songs.size(); i++) {
                                 if (player->playlist->songs[i] == currentSong) {
                                     player->playing = i;
@@ -371,6 +501,7 @@ class TerminalGUI : public InterfaceGUI {
                             Song *currentSong = player->playlist->songs[player->playing];
                             lists->sortPlaylist(player->playlist->id);
                             shuffle = false;
+                            properties["Shuffle"] = shuffle;
                             for (int i = 0; i < player->playlist->songs.size(); i++) {
                                 if (player->playlist->songs[i] == currentSong) {
                                     player->playing = i;
@@ -408,22 +539,35 @@ class TerminalGUI : public InterfaceGUI {
                         switch (key) {
                         case 'A': nextSong--; break;
                         case 'B': nextSong++; break;
-                        case 'C':
-                            seekTo += player->frameRate;
-                            break;
-                        case 'D':
-                            seekTo -= player->frameRate;
-                            break;
+                        case 'C': seekTo += player->frameRate; break;
+                        case 'D': seekTo -= player->frameRate; break;
                         }
                         stage = 0;
                         break;
                     }
-                    if (seekTo != 0) {
-                        auto signal = remote->createSignal("org.sdbuscpp.Concatenator", "Seeked");
-                        signal << seekTo;
-                        remote->emitSignal(signal);
-                    }
-                    
+                }
+                if (nextSong != 0 || player->playing != originalPlaying) {
+                    originalPlaying = player->playing;
+                    std::map<std::string, sdbus::Variant> newProperties;
+                    newProperties["mpris:trackid"] = player->playlist->songs[player->playing + nextSong]->path;
+                    newProperties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000;
+                    newProperties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing + nextSong]->artist};
+                    newProperties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
+                    newProperties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;
+                    properties["Metadata"] = newProperties;
+                    properties["Position"] = 0;
+                }
+                if (seekTo != 0) {
+                    auto signal = remote->createSignal("org.mpris.MediaPlayer2.Player", "Seeked");
+                    signal << seekTo;
+                    remote->emitSignal(signal);
+                }
+                if (properties.size() > 0) {
+                    auto signal = remote->createSignal("org.freedesktop.DBus.Properties", "PropertiesChanged");
+                    signal << "org.mpris.MediaPlayer2.Player";
+                    signal << properties;
+                    signal << std::vector<std::string>();
+                    remote->emitSignal(signal);
                 }
                 drawGUI();
             }

@@ -35,11 +35,7 @@ class PlaylistParser {
             for (int i = 0; i < str.length(); i++) {
                 if (strict) {
                     switch (str[i]) {
-                    case '#':
-                    case '|':
-                    case '-':
-                    case '?':
-                    case '/':
+                    case ';':
                     case ':':
                     case '\\':
                         out += '\\';
@@ -300,7 +296,12 @@ PlaylistParser::PlaylistParser() {
                 inName = true;
                 path += line[i];
             }
-            item->songs.push_back(getSong(path));
+            Song *song = getSong(path);
+            if (song == NULL) {
+                std::cout << "fuck " << path;
+                break;
+            }
+            item->songs.push_back(song);
             break;
         }
         case ';':
