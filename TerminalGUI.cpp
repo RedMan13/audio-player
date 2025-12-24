@@ -288,7 +288,7 @@ class TerminalGUI : public InterfaceGUI {
                     auto signal = remote->createSignal("org.freedesktop.DBus.Properties", "PropertiesChanged");
                     signal << "org.mpris.MediaPlayer2.Player";
                     std::map<std::string, sdbus::Variant> properties;
-                    properties["PlayStatus"] = "Playing";
+                    properties["PlaybackStatus"] = "Playing";
                     signal << properties;
                     signal << std::vector<std::string>();
                     remote->emitSignal(signal);
@@ -300,7 +300,7 @@ class TerminalGUI : public InterfaceGUI {
                     auto signal = remote->createSignal("org.freedesktop.DBus.Properties", "PropertiesChanged");
                     signal << "org.mpris.MediaPlayer2.Player";
                     std::map<std::string, sdbus::Variant> properties;
-                    properties["PlayStatus"] = pause ? "Paused" : "Playing";
+                    properties["PlaybackStatus"] = pause ? "Paused" : "Playing";
                     signal << properties;
                     signal << std::vector<std::string>();
                     remote->emitSignal(signal);
@@ -313,7 +313,7 @@ class TerminalGUI : public InterfaceGUI {
                     auto signal = remote->createSignal("org.freedesktop.DBus.Properties", "PropertiesChanged");
                     signal << "org.mpris.MediaPlayer2.Player";
                     std::map<std::string, sdbus::Variant> properties;
-                    properties["PlayStatus"] = "Stopped";
+                    properties["PlaybackStatus"] = "Stopped";
                     signal << properties;
                     signal << std::vector<std::string>();
                     remote->emitSignal(signal);
@@ -325,7 +325,7 @@ class TerminalGUI : public InterfaceGUI {
                     auto signal = remote->createSignal("org.freedesktop.DBus.Properties", "PropertiesChanged");
                     signal << "org.mpris.MediaPlayer2.Player";
                     std::map<std::string, sdbus::Variant> properties;
-                    properties["PlayStatus"] = "Paused";
+                    properties["PlaybackStatus"] = "Paused";
                     signal << properties;
                     signal << std::vector<std::string>();
                     remote->emitSignal(signal);
