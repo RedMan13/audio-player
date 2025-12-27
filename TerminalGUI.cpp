@@ -173,6 +173,84 @@ class TerminalGUI : public InterfaceGUI {
             }
             std::cout << "\x1b[" << size.ws_row -1 << ":1H" << "\n";
         }
+        std::string textInput(bool draw, std::string prompt, std::string *suggestions = NULL, int len = 0) {
+            int stage = 0;
+            int cursor = 0;
+            int selected = 0;
+            std::vector<int> suggested;
+            std::string left = "";
+            std::string right = "";
+            std::cout << "\x1b[1G\x1b[2K";
+            while (true) {
+                timeout(250);
+                int key = getch();
+                if (key != -1) {
+                    switch (stage) {
+                    case 0:
+                        switch (key) {
+                        case '\x1b':
+                            stage = 1;
+                            break;
+                        case '\n': return left + right;
+                        case '\x7F':
+                            left = left.substr(0, left.length() -1);
+                            cursor--;
+                            break;
+                        default:
+                            left += (char)key;
+                            cursor++;
+                            break;
+                        }
+                        break;
+                    case 1:
+                        stage = 2;
+                        break;
+                    case 2:
+                        switch (key) {
+                        case 'A': selected--; break;
+                        case 'B': selected++; break;
+                        case 'C':
+                            if (right.length() <= 0) {
+                                if (suggested.size() > 0)  {
+                                    left = suggestions[suggested[selected]];
+                                    right = "";
+                                    cursor = left.length();
+                                }
+                                break;
+                            }
+                            cursor++;
+                            left += right[0];
+                            right = right.substr(1, right.length());
+                            break;
+                        case 'D':
+                            if (left.length() <= 0) break;
+                            cursor--;
+                            right = left[left.length() -1] + right;
+                            left = left.substr(0, left.length() -1);
+                            break;
+                        }
+                        stage = 0;
+                        break;
+                    }
+                    std::string input = left + right;
+                    if (input.length() > 0) {
+                        suggested.clear();
+                        for (int i = 0; i < len; i++) {
+                            if (suggestions[i].length() <= input.length()) continue;
+                            if (suggestions[i].substr(0, input.length()) != input) continue;
+                            suggested.push_back(i);
+                        }
+                    }
+                    if (selected < 0) selected = 0;
+                    if (selected >= suggested.size()) selected = suggested.size() -1;
+                }
+                if (draw) drawGUI();
+                if (suggested.size() > 0)
+                    std::cout << "\x1b[1G\x1b[2K\x1b[3m\x1b[90m" << suggestions[suggested[selected]];
+                std::cout << "\x1b[1G\x1b[0m\x1b[4m\x1b[1A\x1b[2K" << prompt;
+                std::cout << "\x1b[1B\x1b[1G" << left << right << "\x1b[1A\x1b[" << (cursor +1) << "G\n";
+            }
+        }
         // this gets run under a seperate thread due to weird blocking shenanigans
         void inputProc() {
             initscr();
@@ -437,8 +515,19 @@ class TerminalGUI : public InterfaceGUI {
                 });
             remotePntr->registerProperty("Volume")
                 .onInterface("org.mpris.MediaPlayer2.Player")
-                .withGetter([this]() { return 1; })
-                .withSetter([this](double value) {});
+                .withGetter([this]() { return volume; })
+                .withSetter([this](double value) {
+                    if (value > 1) return;
+                    if (value < 0) return;
+                    volume = value;
+                    auto signal = remote->createSignal("org.freedesktop.DBus.Properties", "PropertiesChanged");
+                    signal << "org.mpris.MediaPlayer2.Player";
+                    std::map<std::string, sdbus::Variant> properties;
+                    properties["Volume"] = volume;
+                    signal << properties;
+                    signal << std::vector<std::string>();
+                    remote->emitSignal(signal);
+                });
             remotePntr->registerProperty("Position")
                 .onInterface("org.mpris.MediaPlayer2.Player")
                 .withGetter([this]() { return ((double)player->frame / player->frameRate) * 1000; });
@@ -527,26 +616,52 @@ class TerminalGUI : public InterfaceGUI {
                             }
                             break;
                         }
-                        case 't':
-                            std::cout << "\x1b[1;1HEnter a time in the format [hours:]minutes:seconds: \x1b[1;1H\n";
-                            echo();
-                            char input = 0;
-                            timeout(-1);
-                            getstr(&input);
-                            noecho();
-                            std::string timeCode = &input;
+                        case 't': {
+                            std::cout << "\x1b[1;1H";
+                            std::string suggestions[]{
+                                "5:00",
+                                "05:00",
+                                "15:00",
+                                "10:00",
+                                "20:00",
+                                "30:00",
+                                "1:00:00",
+                                "1:30:00",
+                                "2:00:00",
+                                "3:00:00"
+                            };
+                            std::string timeCode = textInput(true, "Enter a time in the format [hours:]minutes:seconds:", suggestions, 10);
                             if (timeCode.find_first_of(':') == -1) break;
                             if (timeCode.find_last_of(':') == -1) break;
                             timeToClose = 0;
                             std::string minutes = timeCode.substr(0, timeCode.find_last_of(':'));
                             if (timeCode.find_last_of(':') != timeCode.find_first_of(':')) {
                                 timeToClose += parseInt(timeCode.substr(0, timeCode.find_first_of(':'))) * 60 * 60;
-                                minutes = timeCode.substr(timeCode.find_first_of(':') +1, timeCode.find_last_of(':'));
+                                minutes = timeCode.substr(timeCode.find_first_of(':') +1, timeCode.find_last_of(':') - (timeCode.find_first_of(':') +1));
                             }
                             timeToClose += parseInt(minutes) * 60;
                             timeToClose += parseInt(timeCode.substr(timeCode.find_last_of(':') +1));
                             start = std::chrono::system_clock::now();
                             break;
+                        }
+                        case 'v': {
+                            std::cout << "\x1b[1;1H";
+                            std::string suggestions[]{
+                                "10",
+                                "20",
+                                "30",
+                                "40",
+                                "50",
+                                "60",
+                                "70",
+                                "80",
+                                "90",
+                                "100"
+                            };
+                            std::string vol = textInput(true, "Enter volume (0-100):", suggestions, 10);
+                            volume = (double)parseInt(vol) / 100;
+                            break;
+                        }
                         }
                         break;
                     case 1:

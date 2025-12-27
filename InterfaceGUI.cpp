@@ -12,6 +12,7 @@ class InterfaceGUI {
         bool pause = false;
         int seekTo = 0;
         int nextSong = 0;
+        double volume = 1;
         bool exitApp = false;
         bool single = false;
         bool stopPlaying = false;
