@@ -588,7 +588,7 @@ class TerminalGUI : public InterfaceGUI {
                             break;
                         case 's': {
                             Song *currentSong = player->playlist->songs[player->playing];
-                            lists->shufflePlaylist(player->playlist->id);
+                            lists->shufflePlaylist(player->playlist);
                             shuffle = true;
                             #if __has_include(<sdbus-c++/sdbus-c++.h>)
                             properties["Shuffle"] = shuffle;
@@ -603,7 +603,7 @@ class TerminalGUI : public InterfaceGUI {
                         }
                         case 'S': {
                             Song *currentSong = player->playlist->songs[player->playing];
-                            lists->sortPlaylist(player->playlist->id);
+                            lists->sortPlaylist(player->playlist);
                             shuffle = false;
                             #if __has_include(<sdbus-c++/sdbus-c++.h>)
                             properties["Shuffle"] = shuffle;

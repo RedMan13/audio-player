@@ -159,6 +159,27 @@ class PlaylistParser {
                 }
             }
         }
+        void sortPlaylist(std::string name) {
+            Playlist *playlist = getPlaylist(name);
+            for (int i = 0; i < playlist->songs.size(); i++) {
+                for (int i = 0; i < playlist->songs.size() -1; i++) {
+                    if (!textNeedsSwap(playlist->songs[i]->title, playlist->songs[i +1]->title)) continue;
+                    auto temp = playlist->songs[i];
+                    playlist->songs[i] = playlist->songs[i +1];
+                    playlist->songs[i +1] = temp;
+                }
+            }
+        }
+        void sortPlaylist(Playlist *playlist) {
+            for (int i = 0; i < playlist->songs.size(); i++) {
+                for (int i = 0; i < playlist->songs.size() -1; i++) {
+                    if (!textNeedsSwap(playlist->songs[i]->title, playlist->songs[i +1]->title)) continue;
+                    auto temp = playlist->songs[i];
+                    playlist->songs[i] = playlist->songs[i +1];
+                    playlist->songs[i +1] = temp;
+                }
+            }
+        }
         void shufflePlaylist(int id) {
             Playlist *playlist = getPlaylist(id);
             for (int i = 0; i < playlist->songs.size(); i++) {
@@ -170,6 +191,14 @@ class PlaylistParser {
         }
         void shufflePlaylist(std::string name) {
             Playlist *playlist = getPlaylist(name);
+            for (int i = 0; i < playlist->songs.size(); i++) {
+                int target = ((double)random() / 2147483647.0) * playlist->songs.size();
+                auto temp = playlist->songs[i];
+                playlist->songs[i] = playlist->songs[target];
+                playlist->songs[target] = temp;
+            }
+        }
+        void shufflePlaylist(Playlist *playlist) {
             for (int i = 0; i < playlist->songs.size(); i++) {
                 int target = ((double)random() / 2147483647.0) * playlist->songs.size();
                 auto temp = playlist->songs[i];

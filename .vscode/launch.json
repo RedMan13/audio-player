@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/dist/play",
-            "args": ["playlist", "Synthbeats"],
+            "args": ["artist", "LOOK MUM NO COMPUTER"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],
