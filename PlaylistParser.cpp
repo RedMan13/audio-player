@@ -210,7 +210,7 @@ class PlaylistParser {
         // note; this will load the file directly with sndfile
         Song *addFromPath(char *path, int playlist) {
             if (getSong(path)) return NULL;
-            SF_INFO *info;
+            SF_INFO *info = new SF_INFO;
             SNDFILE *file = sf_open(path, SFM_READ, info);
             std::string name = path;
             name = name.substr(name.find_last_of('/') +1, name.find_last_of('.') -2);
@@ -227,10 +227,11 @@ class PlaylistParser {
             const char *artist = sf_get_string(file, SF_STR_ARTIST);
             const char *album = sf_get_string(file, SF_STR_ALBUM);
             const char *title = sf_get_string(file, SF_STR_TITLE);
-            if (artist != NULL) song->artist = artist;
-            if (album != NULL) song->album = album;
-            if (title != NULL) song->title = title;
+            if (artist != NULL && artist[0] != '\0') song->artist = artist;
+            if (album != NULL && album[0] != '\0') song->album = album;
+            if (title != NULL && title[0] != '\0') song->title = title;
             addNewSong(song, playlist, false);
+            sf_close(file);
 
             return song;
         }

@@ -137,7 +137,11 @@ void AudioPlayer::playFile(std::string fileName, bool setMeta) {
 
     int bytesPerSample = ceil(format.bits / 8);
     for (int i = 0; i < iter; i++) {
-        if (gui->pause) { i--; continue; }
+        if (gui->pause) {
+            std::this_thread::sleep_for(std::chrono::seconds(frameCount / frameRate));
+            i--;
+            continue;
+        }
         if (gui->exitApp) break;
         if (gui->nextSong != 0) break;
         if (gui->seekTo != 0) {
