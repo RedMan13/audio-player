@@ -161,7 +161,7 @@ class TerminalGUI : public InterfaceGUI {
             if (height > 2) {
                 if (timeToClose != -1) {
                     auto current = std::chrono::system_clock::now();
-                    int since = (((current - start).count() / 1000) / 1000) / 1000;
+                    int since = std::chrono::duration_cast<std::chrono::seconds>(current - start).count();
                     if ((timeToClose - since) <= 0) {
                         exitApp = true;
                     } else {
