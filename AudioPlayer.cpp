@@ -121,9 +121,16 @@ void AudioPlayer::playFile(std::string fileName, bool setMeta) {
         const char *artist = sf_get_string(file, SF_STR_ARTIST);
         const char *album = sf_get_string(file, SF_STR_ALBUM);
         const char *title = sf_get_string(file, SF_STR_TITLE);
-        if (artist != NULL) this->artist = artist;
-        if (album != NULL) this->album = album;
-        if (title != NULL) this->title = title;
+        this->playlist = new Playlist;
+        Song *song = new Song();
+        song->path = fileName;
+        song->artist = "Unknown";
+        song->album = "";
+        song->title = fileName.substr(fileName.find_last_of('/') +1, fileName.find_last_of('.') -2);
+        if (artist != NULL) song->artist = artist;
+        if (album != NULL) song->album = album;
+        if (title != NULL) song->title = title;
+        this->playlist->songs.push_back(song);
     }
     frameRate = fileFormat.samplerate;
     numFrames = fileFormat.frames;

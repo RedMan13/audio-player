@@ -85,10 +85,10 @@ class TerminalGUI : public InterfaceGUI {
             std::cout << "\x1b[0m";
             int songs = player->playlist->songs.size();
             int height = size.ws_row;
-            for (int i = player->playing - (height / 2); i < songs && y < height; i++) {
+            for (int i = player->playing - (height / 2); y < height; i++) {
                 y++;
                 std::cout << "\x1b[" << y << ";1H";
-                if (i < 0) {
+                if (i < 0 || i >= songs) {
                     std::cout << "\x1b[2K";
                     continue;
                 }

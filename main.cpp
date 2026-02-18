@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
                 "(artist), name[, guiType] - Play all songs by a single artist, guiType is one of none, terminal, or window and defines where the player will be rendered, defaults to terminal\n" << 
                 "(album), name[, guiType] - Play all songs in a single album, guiType is one of none, terminal, or window and defines where the player will be rendered, defaults to terminal\n" << 
                 "(playlist), name[, guiType] - play all songs inside a playlist, guiType is one of none, terminal, or window and defines where the player will be rendered, defaults to terminal\n" << 
-                "(play) path[, guiType] - play a single audio file, guiType is one of none, terminal, or window and defines where the player will be rendered\n" <<
+                "(file) path[, guiType] - play a single audio file, guiType is one of none, terminal, or window and defines where the player will be rendered\n" <<
                 "(shuffle) playlist - shuffles a playlist then stores the result as the local playlist order\n" <<
                 "(sort) playlist - sorts a playlist a-z by title, and then stores that result to disk\n" <<
                 "(add) path[, playlist] - adds a single file to the local .playlists, optionally also adds it to a given playlist\n" <<
@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
             return 0;
         }
         if (option == "versions") {
-            std::cout << "AudioPlayer-1.13.30\n" << sf_version_string() << "\n";
+            std::cout << "AudioPlayer-1.13.44\n" << sf_version_string() << "\n";
             return 0;
         }
         if (option == "sort") {
@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
             player.playPlaylist(lists->getAlbum(argv[2]));
         } else if (option == "playlist") {
             player.playPlaylist(lists->getPlaylist(argv[2]));
-        } else if (option == "play") {
+        } else if (option == "file") {
             player.gui->single = true;
             player.playFile(argv[2], true);
             return 0;
