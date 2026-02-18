@@ -705,6 +705,7 @@ class TerminalGUI : public InterfaceGUI {
                 #endif
                 drawGUI();
             }
+            echo();
             endwin();
         }
     public:
