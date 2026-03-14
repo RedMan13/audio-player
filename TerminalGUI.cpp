@@ -253,7 +253,7 @@ class TerminalGUI : public InterfaceGUI {
         }
         // this gets run under a seperate thread due to weird blocking shenanigans
         void inputProc() {
-            initscr();
+            auto console = initscr();
             noecho();
             int stage = 0;
             runInputs = true;
@@ -334,6 +334,7 @@ class TerminalGUI : public InterfaceGUI {
                     newProperties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing + nextSong]->artist};
                     newProperties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
                     newProperties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;
+                    newProperties["xesam:url"] = "file:" + player->playlist->songs[player->playing + nextSong]->path;
                     properties["Metadata"] = newProperties;
                     properties["Position"] = 0;
                     signal << properties;
@@ -353,6 +354,7 @@ class TerminalGUI : public InterfaceGUI {
                     newProperties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing + nextSong]->artist};
                     newProperties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
                     newProperties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;
+                    newProperties["xesam:url"] = "file:" + player->playlist->songs[player->playing + nextSong]->path;
                     properties["Metadata"] = newProperties;
                     properties["Position"] = 0;
                     signal << properties;
@@ -458,6 +460,7 @@ class TerminalGUI : public InterfaceGUI {
                     newProperties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing]->artist};
                     newProperties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
                     newProperties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;
+                    newProperties["xesam:url"] = "file:" + player->playlist->songs[player->playing + nextSong]->path;
                     properties["Metadata"] = newProperties;
                     properties["Position"] = 0;
                     signal << properties;
@@ -511,6 +514,7 @@ class TerminalGUI : public InterfaceGUI {
                     properties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing + nextSong]->artist};
                     properties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
                     properties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;
+                    properties["xesam:url"] = "file:" + player->playlist->songs[player->playing + nextSong]->path;
                     return properties;
                 });
             remotePntr->registerProperty("Volume")
@@ -687,6 +691,7 @@ class TerminalGUI : public InterfaceGUI {
                     newProperties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing + nextSong]->artist};
                     newProperties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
                     newProperties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;
+                    newProperties["xesam:url"] = "file:" + player->playlist->songs[player->playing + nextSong]->path;
                     properties["Metadata"] = newProperties;
                     properties["Position"] = 0;
                 }
@@ -705,7 +710,6 @@ class TerminalGUI : public InterfaceGUI {
                 #endif
                 drawGUI();
             }
-            echo();
             endwin();
         }
     public:
@@ -717,7 +721,7 @@ class TerminalGUI : public InterfaceGUI {
         ~TerminalGUI() {
             runInputs = false;
             gui.join();
-
+            echo();
         }
 };
 #endif
