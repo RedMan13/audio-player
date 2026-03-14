@@ -310,7 +310,6 @@ class TerminalGUI : public InterfaceGUI {
                 .onInterface("org.mpris.MediaPlayer2")
                 .withGetter([this]() {
                     std::vector<std::string> list;
-                    // list.push_back("http");
                     list.push_back("audio/wav");
                     list.push_back("audio/aiff");
                     list.push_back("audio/pcm");

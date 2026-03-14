@@ -25,11 +25,11 @@ class AudioPlayer {
     private:
         int driver;
     public:
-        // not actual frames!!!!
-        // these are the frames as defined by sndfile, as in samples
         std::string artist;
         std::string album;
         std::string title;
+        // not actual frames!!!!
+        // these are the frames as defined by sndfile, as in samples
         int numFrames;
         int frame;
         int channels;
