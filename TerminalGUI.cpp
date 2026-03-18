@@ -329,7 +329,7 @@ class TerminalGUI : public InterfaceGUI {
                     std::map<std::string, sdbus::Variant> properties;
                     std::map<std::string, sdbus::Variant> newProperties;
                     newProperties["mpris:trackid"] = player->playlist->songs[player->playing + nextSong]->path;
-                    newProperties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000;
+                    newProperties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000000;
                     newProperties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing + nextSong]->artist};
                     newProperties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
                     newProperties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;
@@ -349,7 +349,7 @@ class TerminalGUI : public InterfaceGUI {
                     std::map<std::string, sdbus::Variant> properties;
                     std::map<std::string, sdbus::Variant> newProperties;
                     newProperties["mpris:trackid"] = player->playlist->songs[player->playing + nextSong]->path;
-                    newProperties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000;
+                    newProperties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000000;
                     newProperties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing + nextSong]->artist};
                     newProperties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
                     newProperties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;
@@ -412,14 +412,14 @@ class TerminalGUI : public InterfaceGUI {
             remotePntr->registerMethod("Seek")
                 .onInterface("org.mpris.MediaPlayer2.Player")
                 .implementedAs([this](int Offset) {
-                    seekTo = (((float)Offset / 1000) * player->frameRate);
+                    player->frame += ((float)Offset / 1000) * player->frameRate;
                     auto signal = remote->createSignal("org.mpris.MediaPlayer2.Player", "Seeked");
                     signal << seekTo;
                     remote->emitSignal(signal);
                     auto changes = remote->createSignal("org.freedesktop.DBus.Properties", "PropertiesChanged");
                     changes << "org.mpris.MediaPlayer2.Player";
                     std::map<std::string, sdbus::Variant> properties;
-                    properties["Position"] = player->frame + seekTo;
+                    properties["Position"] = ((double)player->frame / player->frameRate) * 1000000;
                     changes << properties;
                     changes << std::vector<std::string>();
                     remote->emitSignal(changes);
@@ -428,14 +428,14 @@ class TerminalGUI : public InterfaceGUI {
                 .onInterface("org.mpris.MediaPlayer2.Player")
                 .implementedAs([this](std::string TrackId, int Offset) {
                     if (TrackId != player->playlist->songs[player->playing]->path) return;
-                    seekTo = (((float)Offset / 1000) * player->frameRate) - player->frame;
+                    player->frame += ((float)Offset / 1000000) * player->frameRate;
                     auto signal = remote->createSignal("org.mpris.MediaPlayer2.Player", "Seeked");
                     signal << seekTo;
                     remote->emitSignal(signal);
                     auto changes = remote->createSignal("org.freedesktop.DBus.Properties", "PropertiesChanged");
                     changes << "org.mpris.MediaPlayer2.Player";
                     std::map<std::string, sdbus::Variant> properties;
-                    properties["Position"] = player->frame + seekTo;
+                    properties["Position"] = ((double)player->frame / player->frameRate) * 1000000;
                     changes << properties;
                     changes << std::vector<std::string>();
                     remote->emitSignal(changes);
@@ -455,7 +455,7 @@ class TerminalGUI : public InterfaceGUI {
                     std::map<std::string, sdbus::Variant> properties;
                     std::map<std::string, sdbus::Variant> newProperties;
                     newProperties["mpris:trackid"] = player->playlist->songs[player->playing + nextSong]->path;
-                    newProperties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000;
+                    newProperties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000000;
                     newProperties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing]->artist};
                     newProperties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
                     newProperties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;
@@ -509,7 +509,7 @@ class TerminalGUI : public InterfaceGUI {
                 .withGetter([this]() {
                     std::map<std::string, sdbus::Variant> properties;
                     properties["mpris:trackid"] = player->playlist->songs[player->playing + nextSong]->path;
-                    properties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000;
+                    properties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000000;
                     properties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing + nextSong]->artist};
                     properties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
                     properties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;
@@ -533,7 +533,7 @@ class TerminalGUI : public InterfaceGUI {
                 });
             remotePntr->registerProperty("Position")
                 .onInterface("org.mpris.MediaPlayer2.Player")
-                .withGetter([this]() { return ((double)player->frame / player->frameRate) * 1000; });
+                .withGetter([this]() { return ((double)player->frame / player->frameRate) * 1000000; });
             remotePntr->registerProperty("MinimumRate")
                 .onInterface("org.mpris.MediaPlayer2.Player")
                 .withGetter([this]() { return 1.0; });
@@ -686,7 +686,7 @@ class TerminalGUI : public InterfaceGUI {
                     originalPlaying = player->playing;
                     std::map<std::string, sdbus::Variant> newProperties;
                     newProperties["mpris:trackid"] = player->playlist->songs[player->playing + nextSong]->path;
-                    newProperties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000;
+                    newProperties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000000;
                     newProperties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing + nextSong]->artist};
                     newProperties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
                     newProperties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;
