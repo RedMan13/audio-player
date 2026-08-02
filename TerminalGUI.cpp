@@ -330,6 +330,7 @@ class TerminalGUI : public InterfaceGUI {
                     std::map<std::string, sdbus::Variant> newProperties;
                     newProperties["mpris:trackid"] = player->playlist->songs[player->playing + nextSong]->path;
                     newProperties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000000;
+                    newProperties["mpris:artUrl"] = player->playlist->songs[player->playing + nextSong]->iconUrl;
                     newProperties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing + nextSong]->artist};
                     newProperties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
                     newProperties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;
@@ -350,6 +351,7 @@ class TerminalGUI : public InterfaceGUI {
                     std::map<std::string, sdbus::Variant> newProperties;
                     newProperties["mpris:trackid"] = player->playlist->songs[player->playing + nextSong]->path;
                     newProperties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000000;
+                    newProperties["mpris:artUrl"] = player->playlist->songs[player->playing + nextSong]->iconUrl;
                     newProperties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing + nextSong]->artist};
                     newProperties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
                     newProperties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;
@@ -456,6 +458,7 @@ class TerminalGUI : public InterfaceGUI {
                     std::map<std::string, sdbus::Variant> newProperties;
                     newProperties["mpris:trackid"] = player->playlist->songs[player->playing + nextSong]->path;
                     newProperties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000000;
+                    newProperties["mpris:artUrl"] = player->playlist->songs[player->playing + nextSong]->iconUrl;
                     newProperties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing]->artist};
                     newProperties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
                     newProperties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;
@@ -510,6 +513,7 @@ class TerminalGUI : public InterfaceGUI {
                     std::map<std::string, sdbus::Variant> properties;
                     properties["mpris:trackid"] = player->playlist->songs[player->playing + nextSong]->path;
                     properties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000000;
+                    properties["mpris:artUrl"] = player->playlist->songs[player->playing + nextSong]->iconUrl;
                     properties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing + nextSong]->artist};
                     properties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
                     properties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;
@@ -687,6 +691,7 @@ class TerminalGUI : public InterfaceGUI {
                     std::map<std::string, sdbus::Variant> newProperties;
                     newProperties["mpris:trackid"] = player->playlist->songs[player->playing + nextSong]->path;
                     newProperties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000000;
+                    newProperties["mpris:artUrl"] = player->playlist->songs[player->playing + nextSong]->iconUrl;
                     newProperties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing + nextSong]->artist};
                     newProperties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
                     newProperties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;

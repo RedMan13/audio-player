@@ -4,6 +4,7 @@
 #include <string>
 #include <iostream>
 #include <chrono>
+#include <ext/stdio_filebuf.h>
 #ifndef PARSER_LOADED
 #define PARSER_LOADED
 
@@ -12,6 +13,7 @@ struct Song {
     std::string artist;
     std::string album;
     std::string title;
+    std::string iconUrl;
 };
 struct Playlist {
     int id;
@@ -207,13 +209,117 @@ class PlaylistParser {
             }
         }
 
+        std::string extractArt(char *path) {
+            if (getSong(path)) return getSong(path)->iconUrl;
+            std::string name = path;
+            name = name.substr(name.find_last_of('/') +1, name.find_last_of('.') -2);
+            std::ifstream data(path);
+            unsigned char header[11];
+            data.read((char *)header, 10);
+            if (header[0] == 'I' && header[1] == 'D' && header[2] == '3') {
+                int metaLength = (header[6] << 21) | (header[7] << 14) | (header[8] << 7) | header[9];
+                int idx = 10;
+                if (header[5] & 0b01000000) {
+                    data.read((char *)header, 4);
+                    int extSize = (header[0] << 21) | (header[1] << 14) | (header[2] << 7) | header[3];
+                    idx += extSize;
+                }
+                do {
+                    data.seekg(idx); // force over to where idx points
+                    data.read((char *)header, 11);
+                    idx += 10;
+                    int tag = (header[0] << 24) | (header[1] << 16) | (header[2] << 8) | header[3];
+                    int size = (header[4] << 24) | (header[5] << 16) | (header[6] << 8) | header[7];
+                    // short flags = (header[8] << 8) | header[9];
+                    if (tag != 'APIC') { idx += size; continue; }
+                    char imageData[size];
+                    data.read(imageData, size);
+                    bool littleEndian = false;
+                    int firstZeros = 1;
+                    if (header[10] > 0 && header[10] < 3) firstZeros = 2;
+                    int lastZeros = firstZeros + 2;
+                    std::string mimeType = "";
+                    int i = 0;
+                    for (int c = 0; i < size; i++) {
+                        if (c == firstZeros) {
+                            c++; // this way we are no LONGER first
+                            if (imageData[i] > 0 && imageData[i] < 3) lastZeros = firstZeros + 3;
+                            continue; // dont let the following treat this as null-term
+                        }
+                        if (imageData[i] == 0) c++;
+                        if (c >= lastZeros) break;
+                        // convert all strings back to utf8, since its betterer
+                        if (c < firstZeros) {
+                            switch (header[10]) {
+                            case 0x01: if (i == 0) littleEndian = imageData[0] == 0xFF;
+                            case 0x02: {
+                                if (i % 2) break;
+                                short firstCodePoint = littleEndian
+                                    ? (imageData[i +1] << 8) | imageData[i]
+                                    : (imageData[i] << 8) | imageData[i +1];
+                                short secondCodePoint = littleEndian
+                                    ? (imageData[i +1] << 8) | imageData[i]
+                                    : (imageData[i] << 8) | imageData[i +1];
+                                int codePoint = firstCodePoint;
+                                if ((firstCodePoint & 0xFF00) >= 0xD800 && (secondCodePoint & 0xFF00) >= 0xDC00)
+                                    codePoint = ((firstCodePoint - 0xD800) << 10) | (secondCodePoint - 0xDC00);
+                                if (codePoint <= 0x7F) mimeType += (char)secondCodePoint; 
+                                else if (codePoint <= 0x7FF) {
+                                    mimeType += (char)(0b11000000 | ((codePoint & 0b11111000000) >> 6));
+                                    mimeType += (char)(0b10000000 | (codePoint & 0b00000111111));
+                                } else if (codePoint <= 0xFFFF) {
+                                    mimeType += (char)(0b11100000 | ((codePoint & 0b1111000000000000) >> 12));
+                                    mimeType += (char)(0b10000000 | ((codePoint & 0b0000111111000000) >> 6));
+                                    mimeType += (char)(0b10000000 | (codePoint & 0b0000000000111111));
+                                } else { // anything larger *cant* exist in either format, so even if we somehow get that it will need trimmed anyways
+                                    mimeType += (char)(0b11110000 | ((codePoint & 0b111000000000000000000) >> 18));
+                                    mimeType += (char)(0b10000000 | ((codePoint & 0b000111111000000000000) >> 12));
+                                    mimeType += (char)(0b10000000 | ((codePoint & 0b000000000111111000000) >> 6));
+                                    mimeType += (char)(0b10000000 | (codePoint & 0b000000000000000111111));
+                                }
+                                break;
+                            }
+                            case 0x00:
+                                if (imageData[i] > 0x7F) {
+                                    mimeType += (char)(0b11000000 | ((imageData[i] & 0b11000000) >> 6));
+                                    mimeType += (char)(0b10000000 | (imageData[i] & 0b00111111));
+                                    break;
+                                }
+                                mimeType += imageData[i];
+                                break;
+                            default:
+                            case 0x03: mimeType += imageData[i]; break;
+                            }
+                        }
+                    }
+                    std::string extension = ".bin";
+                    if (mimeType == "image/png") extension = ".png";
+                    else if (mimeType == "image/jpeg") extension = ".jpg";
+                    else if (mimeType == "image/webp") extension = ".webp";
+                    else if (mimeType == "image/gif") extension = ".gif";
+                    else if (mimeType == "image/svg+xml") extension = "svg";
+                    else if (mimeType == "image/bmp") extension = ".bmp";
+                    else if (mimeType == "image/avif") extension = ".avif";
+                    else if (mimeType == "image/tiff") extension = ".tiff";
+                    std::string folder = path;
+                    std::string iconPath = folder.substr(0, folder.find_last_of('/') +1) + '/' + name + extension;
+                    std::ofstream output(iconPath);
+                    for (i++; i < size; i++) output << imageData[i];
+                    output.close();
+                    data.close();
+                    return "file:" + iconPath;
+                } while (idx < metaLength);
+            }
+            return "";
+        }
         // note; this will load the file directly with sndfile
         Song *addFromPath(char *path, int playlist) {
             if (getSong(path)) return NULL;
-            SF_INFO *info = new SF_INFO;
-            SNDFILE *file = sf_open(path, SFM_READ, info);
+            std::string iconUrl = extractArt(path);
             std::string name = path;
             name = name.substr(name.find_last_of('/') +1, name.find_last_of('.') -2);
+            SF_INFO *info = new SF_INFO;
+            SNDFILE *file = sf_open(path, SFM_READ, info);
             if (sf_error(file) > 0) {
                 std::cout << "  Could not add " << name << "; " << sf_strerror(file) << "\n";
                 return NULL;
@@ -224,6 +330,7 @@ class PlaylistParser {
             song->artist = "Unknown";
             song->album = "";
             song->title = name;
+            if (iconUrl.length() > 0) song->iconUrl = iconUrl;
             const char *artist = sf_get_string(file, SF_STR_ARTIST);
             const char *album = sf_get_string(file, SF_STR_ALBUM);
             const char *title = sf_get_string(file, SF_STR_TITLE);
@@ -278,7 +385,8 @@ class PlaylistParser {
                 metaFile << "; path: " + esc(list->songs[i]->path, true) <<
                     "; artist: " << esc(list->songs[i]->artist, true) <<
                     "; album: " << esc(list->songs[i]->album, true) <<
-                    "; title: " << esc(list->songs[i]->title, true) << "\n";
+                    "; title: " << esc(list->songs[i]->title, true) <<
+                    "; iconUrl: " << esc(list->songs[i]->iconUrl, true) << "\n";
             list = list->next;
             while (list != NULL) {
                 metaFile << "\n/ " << esc(list->name, false) << "\n";
@@ -359,9 +467,10 @@ PlaylistParser::PlaylistParser() {
                 }
                 if ((i == line.length() -1 || line[i +1] == ';')) {
                     if (key == "path") song->path = value;
-                    if (key == "artist") song->artist = value;
-                    if (key == "album") song->album = value;
-                    if (key == "title") song->title = value;
+                    else if (key == "artist") song->artist = value;
+                    else if (key == "album") song->album = value;
+                    else if (key == "title") song->title = value;
+                    else if (key == "iconUrl") song->iconUrl = value;
                 }
             }
             addNewSong(song, item->id, false);

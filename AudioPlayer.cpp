@@ -127,6 +127,7 @@ void AudioPlayer::playFile(std::string fileName, bool setMeta) {
         song->artist = "Unknown";
         song->album = "";
         song->title = fileName.substr(fileName.find_last_of('/') +1, fileName.find_last_of('.') -2);
+        song->iconUrl = lists->extractArt((char *)fileName.c_str());
         if (artist != NULL) song->artist = artist;
         if (album != NULL) song->album = album;
         if (title != NULL) song->title = title;
@@ -137,12 +138,13 @@ void AudioPlayer::playFile(std::string fileName, bool setMeta) {
     channels = fileFormat.channels;
     frame = 0;
     // manually pipe data between sndfile and ao
+    int bytesPerSample = ceil(format.bits / 8);
     int frameCount = (fileFormat.samplerate / 4) > MAX_BUFFER ? MAX_BUFFER : (fileFormat.samplerate / 4);
     arrayLength = frameCount * fileFormat.channels;
     int iter = ceil((float)(fileFormat.frames) / (float)(frameCount));
     buffer = new short[arrayLength];
-
-    int bytesPerSample = ceil(format.bits / 8);
+    
+    StartPlaying:
     for (int i = 0; i < iter; i++) {
         if (gui->pause) {
             std::this_thread::sleep_for(std::chrono::seconds(frameCount / frameRate));
@@ -162,6 +164,11 @@ void AudioPlayer::playFile(std::string fileName, bool setMeta) {
         for (int i = 0; i < arrayLength; i++) buffer[i] *= gui->volume;
         ao_play(device, (char *)buffer, arrayLength * bytesPerSample);
         frame += arrayLength / fileFormat.channels;
+    }
+
+    if (gui->single && gui->loop) {
+        sf_seek(file, 0, SF_SEEK_SET);
+        goto StartPlaying;
     }
 
     // done playing: close the file and the audio interface
