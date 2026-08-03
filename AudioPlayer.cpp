@@ -143,10 +143,11 @@ void AudioPlayer::playFile(std::string fileName, bool setMeta) {
     // int iter = ceil((float)(fileFormat.frames) / (float)(frameCount));
     auto chunkTime = std::chrono::seconds(frameCount / frameRate);
     
-    StartPlaying:
     arrayLength = frameCount * fileFormat.channels;
     buffer = new short[arrayLength];
     auto empty = new short[arrayLength];
+
+    StartPlaying:
     while (frame < fileFormat.frames) {
         // playing an empty buffer is (inexplicably) more cpu efficient then simply sleeping
         while (gui->pause) ao_play(device, (char *)empty, arrayLength * bytesPerSample);
@@ -170,6 +171,7 @@ void AudioPlayer::playFile(std::string fileName, bool setMeta) {
     if (gui->single && gui->loop) {
         sf_seek(file, 0, SF_SEEK_SET);
         frame = 0;
+        arrayLength = frameCount * fileFormat.channels;
         goto StartPlaying;
     }
 
