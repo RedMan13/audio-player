@@ -29,7 +29,7 @@ void AudioPlayer::playFile(std::string fileName, bool setMeta) {
     if (sf_error(file) > 0) {
         char log[2048];
         sf_command(file, SFC_GET_LOG_INFO, &log, 2048);
-        std::cout << log;
+        std::cerr << log;
         std::cerr << sf_strerror(file) << "\n";
         return;
     }
@@ -140,17 +140,16 @@ void AudioPlayer::playFile(std::string fileName, bool setMeta) {
     // manually pipe data between sndfile and ao
     int bytesPerSample = ceil(format.bits / 8);
     int frameCount = (fileFormat.samplerate / 4) > MAX_BUFFER ? MAX_BUFFER : (fileFormat.samplerate / 4);
-    arrayLength = frameCount * fileFormat.channels;
-    int iter = ceil((float)(fileFormat.frames) / (float)(frameCount));
+    // int iter = ceil((float)(fileFormat.frames) / (float)(frameCount));
+    auto chunkTime = std::chrono::seconds(frameCount / frameRate);
     buffer = new short[arrayLength];
+    auto empty = new short[arrayLength];
     
     StartPlaying:
-    for (int i = 0; i < iter; i++) {
-        if (gui->pause) {
-            std::this_thread::sleep_for(std::chrono::seconds(frameCount / frameRate));
-            i--;
-            continue;
-        }
+    arrayLength = frameCount * fileFormat.channels;
+    while (frame < fileFormat.frames) {
+        // playing an empty buffer is (inexplicably) more cpu efficient then simply sleeping
+        while (gui->pause) ao_play(device, (char *)empty, arrayLength * bytesPerSample);
         if (gui->exitApp) break;
         if (gui->nextSong != 0) break;
         if (gui->seekTo != 0) {
@@ -161,13 +160,16 @@ void AudioPlayer::playFile(std::string fileName, bool setMeta) {
             gui->seekTo = 0;
         }
         arrayLength = sf_read_short(file, buffer, arrayLength);
-        for (int i = 0; i < arrayLength; i++) buffer[i] *= gui->volume;
+        std::cout << arrayLength << " " << frame << "\n";
+        for (int i = 0; i < arrayLength; i++)
+            buffer[i] *= gui->volume;
         ao_play(device, (char *)buffer, arrayLength * bytesPerSample);
         frame += arrayLength / fileFormat.channels;
     }
 
     if (gui->single && gui->loop) {
         sf_seek(file, 0, SF_SEEK_SET);
+        frame = 0;
         goto StartPlaying;
     }
 

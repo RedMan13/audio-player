@@ -32,6 +32,7 @@ class TerminalGUI : public InterfaceGUI {
         sdbus::IObject *remote;
         std::string namePlate;
         int originalPlaying;
+        int originalPlaylist;
         #endif
         
         winsize getTerminalSize() {
@@ -686,7 +687,8 @@ class TerminalGUI : public InterfaceGUI {
                     }
                 }
                 #if __has_include(<sdbus-c++/sdbus-c++.h>)
-                if (nextSong != 0 || player->playing != originalPlaying) {
+                if (nextSong != 0 || player->playing != originalPlaying || player->playlist->id != originalPlaylist) {
+                    originalPlaylist = player->playlist->id;
                     originalPlaying = player->playing;
                     std::map<std::string, sdbus::Variant> newProperties;
                     newProperties["mpris:trackid"] = player->playlist->songs[player->playing + nextSong]->path;

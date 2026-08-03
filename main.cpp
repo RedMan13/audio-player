@@ -91,6 +91,7 @@ int main(int argc, char *argv[]) {
             player.playPlaylist(lists->getPlaylist(argv[2]));
         } else if (option == "file") {
             player.gui->single = true;
+            player.gui->loop = true;
             player.playFile(argv[2], true);
             return 0;
         }
