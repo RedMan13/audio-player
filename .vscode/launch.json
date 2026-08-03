@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/dist/play",
-            "args": ["file", "/home/godslayerakp/Music/out-of-space.mp3", "none"],
+            "args": ["file", "/home/godslayerakp/Music/out-of-space.mp3"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],

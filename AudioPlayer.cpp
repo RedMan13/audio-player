@@ -161,7 +161,6 @@ void AudioPlayer::playFile(std::string fileName, bool setMeta) {
             gui->seekTo = 0;
         }
         arrayLength = sf_read_short(file, buffer, arrayLength);
-        std::cout << arrayLength << " " << frame << "\n";
         for (int i = 0; i < arrayLength; i++)
             buffer[i] *= gui->volume;
         ao_play(device, (char *)buffer, arrayLength * bytesPerSample);
