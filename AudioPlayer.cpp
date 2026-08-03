@@ -126,7 +126,10 @@ void AudioPlayer::playFile(std::string fileName, bool setMeta) {
         song->path = fileName;
         song->artist = "Unknown";
         song->album = "";
-        song->title = fileName.substr(fileName.find_last_of('/') +1, fileName.find_last_of('.') -2);
+        int start = fileName.find_last_of('/') +1;
+        int end = fileName.find_last_of('.');
+        int length = end - start;
+        song->title = fileName.substr(start, length);
         song->iconUrl = lists->extractArt((char *)fileName.c_str());
         if (artist != NULL) song->artist = artist;
         if (album != NULL) song->album = album;

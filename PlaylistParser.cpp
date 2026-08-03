@@ -317,7 +317,10 @@ class PlaylistParser {
             if (getSong(path)) return NULL;
             std::string iconUrl = extractArt(path);
             std::string name = path;
-            name = name.substr(name.find_last_of('/') +1, name.find_last_of('.') -2);
+            int start = name.find_last_of('/') +1;
+            int end = name.find_last_of('.');
+            int length = end - start;
+            name = name.substr(start, length);
             SF_INFO *info = new SF_INFO;
             SNDFILE *file = sf_open(path, SFM_READ, info);
             if (sf_error(file) > 0) {
@@ -353,15 +356,24 @@ class PlaylistParser {
             return song;
         }
         Song *createNewSong(std::string path, std::string artist, std::string album, int playlist) {
-            std::string name = path.substr(path.find_last_of('/') +1, path.find_last_of('.') -2);
+            int start = path.find_last_of('/') +1;
+            int end = path.find_last_of('.');
+            int length = end - start;
+            std::string name = path.substr(start, length);
             return createNewSong(path, artist, album, name, playlist);
         }
         Song *createNewSong(std::string path, std::string artist, int playlist) {
-            std::string name = path.substr(path.find_last_of('/') +1, path.find_last_of('.') -2);
+            int start = path.find_last_of('/') +1;
+            int end = path.find_last_of('.');
+            int length = end - start;
+            std::string name = path.substr(start, length);
             return createNewSong(path, artist, "", name, playlist);
         }
         Song *createNewSong(std::string path, int playlist) {
-            std::string name = path.substr(path.find_last_of('/') +1, path.find_last_of('.') -2);
+            int start = path.find_last_of('/') +1;
+            int end = path.find_last_of('.');
+            int length = end - start;
+            std::string name = path.substr(start, length);
             return createNewSong(path, "Unknown", "", name, playlist);
         }
         Song *createNewSong(int playlist) { return createNewSong("", "", "", "", playlist); }
