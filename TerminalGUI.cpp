@@ -329,13 +329,14 @@ class TerminalGUI : public InterfaceGUI {
                     signal << "org.mpris.MediaPlayer2.Player";
                     std::map<std::string, sdbus::Variant> properties;
                     std::map<std::string, sdbus::Variant> newProperties;
-                    newProperties["mpris:trackid"] = player->playlist->songs[player->playing + nextSong]->path;
+                    int nowPlaying = (player->playing + nextSong) % player->playlist->songs.size();
+                    newProperties["mpris:trackid"] = player->playlist->songs[nowPlaying]->path;
                     newProperties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000000;
-                    newProperties["mpris:artUrl"] = player->playlist->songs[player->playing + nextSong]->iconUrl;
-                    newProperties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing + nextSong]->artist};
-                    newProperties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
-                    newProperties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;
-                    newProperties["xesam:url"] = "file:" + player->playlist->songs[player->playing + nextSong]->path;
+                    newProperties["mpris:artUrl"] = player->playlist->songs[nowPlaying]->iconUrl;
+                    newProperties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[nowPlaying]->artist};
+                    newProperties["xesam:album"] = player->playlist->songs[nowPlaying]->album;
+                    newProperties["xesam:title"] = player->playlist->songs[nowPlaying]->title;
+                    newProperties["xesam:url"] = "file:" + player->playlist->songs[nowPlaying]->path;
                     properties["Metadata"] = newProperties;
                     properties["Position"] = 0;
                     signal << properties;
@@ -350,13 +351,14 @@ class TerminalGUI : public InterfaceGUI {
                     signal << "org.mpris.MediaPlayer2.Player";
                     std::map<std::string, sdbus::Variant> properties;
                     std::map<std::string, sdbus::Variant> newProperties;
-                    newProperties["mpris:trackid"] = player->playlist->songs[player->playing + nextSong]->path;
+                    int nowPlaying = (player->playing + nextSong) % player->playlist->songs.size();
+                    newProperties["mpris:trackid"] = player->playlist->songs[nowPlaying]->path;
                     newProperties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000000;
-                    newProperties["mpris:artUrl"] = player->playlist->songs[player->playing + nextSong]->iconUrl;
-                    newProperties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing + nextSong]->artist};
-                    newProperties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
-                    newProperties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;
-                    newProperties["xesam:url"] = "file:" + player->playlist->songs[player->playing + nextSong]->path;
+                    newProperties["mpris:artUrl"] = player->playlist->songs[nowPlaying]->iconUrl;
+                    newProperties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[nowPlaying]->artist};
+                    newProperties["xesam:album"] = player->playlist->songs[nowPlaying]->album;
+                    newProperties["xesam:title"] = player->playlist->songs[nowPlaying]->title;
+                    newProperties["xesam:url"] = "file:" + player->playlist->songs[nowPlaying]->path;
                     properties["Metadata"] = newProperties;
                     properties["Position"] = 0;
                     signal << properties;
@@ -457,13 +459,14 @@ class TerminalGUI : public InterfaceGUI {
                     signal << "org.mpris.MediaPlayer2.Player";
                     std::map<std::string, sdbus::Variant> properties;
                     std::map<std::string, sdbus::Variant> newProperties;
-                    newProperties["mpris:trackid"] = player->playlist->songs[player->playing + nextSong]->path;
+                    int nowPlaying = (player->playing + nextSong) % player->playlist->songs.size();
+                    newProperties["mpris:trackid"] = player->playlist->songs[nowPlaying]->path;
                     newProperties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000000;
-                    newProperties["mpris:artUrl"] = player->playlist->songs[player->playing + nextSong]->iconUrl;
+                    newProperties["mpris:artUrl"] = player->playlist->songs[nowPlaying]->iconUrl;
                     newProperties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing]->artist};
-                    newProperties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
-                    newProperties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;
-                    newProperties["xesam:url"] = "file:" + player->playlist->songs[player->playing + nextSong]->path;
+                    newProperties["xesam:album"] = player->playlist->songs[nowPlaying]->album;
+                    newProperties["xesam:title"] = player->playlist->songs[nowPlaying]->title;
+                    newProperties["xesam:url"] = "file:" + player->playlist->songs[nowPlaying]->path;
                     properties["Metadata"] = newProperties;
                     properties["Position"] = 0;
                     signal << properties;
@@ -511,14 +514,15 @@ class TerminalGUI : public InterfaceGUI {
             remotePntr->registerProperty("Metadata")
                 .onInterface("org.mpris.MediaPlayer2.Player")
                 .withGetter([this]() {
+                    int nowPlaying = (player->playing + nextSong) % player->playlist->songs.size();
                     std::map<std::string, sdbus::Variant> properties;
-                    properties["mpris:trackid"] = player->playlist->songs[player->playing + nextSong]->path;
+                    properties["mpris:trackid"] = player->playlist->songs[nowPlaying]->path;
                     properties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000000;
-                    properties["mpris:artUrl"] = player->playlist->songs[player->playing + nextSong]->iconUrl;
-                    properties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing + nextSong]->artist};
-                    properties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
-                    properties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;
-                    properties["xesam:url"] = "file:" + player->playlist->songs[player->playing + nextSong]->path;
+                    properties["mpris:artUrl"] = player->playlist->songs[nowPlaying]->iconUrl;
+                    properties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[nowPlaying]->artist};
+                    properties["xesam:album"] = player->playlist->songs[nowPlaying]->album;
+                    properties["xesam:title"] = player->playlist->songs[nowPlaying]->title;
+                    properties["xesam:url"] = "file:" + player->playlist->songs[nowPlaying]->path;
                     return properties;
                 });
             remotePntr->registerProperty("Volume")
@@ -690,14 +694,15 @@ class TerminalGUI : public InterfaceGUI {
                 if (nextSong != 0 || player->playing != originalPlaying || player->playlist->id != originalPlaylist) {
                     originalPlaylist = player->playlist->id;
                     originalPlaying = player->playing;
+                    int nowPlaying = (player->playing + nextSong) % player->playlist->songs.size();
                     std::map<std::string, sdbus::Variant> newProperties;
-                    newProperties["mpris:trackid"] = player->playlist->songs[player->playing + nextSong]->path;
+                    newProperties["mpris:trackid"] = player->playlist->songs[nowPlaying]->path;
                     newProperties["mpris:length"] = ((double)player->numFrames / player->frameRate) * 1000000;
-                    newProperties["mpris:artUrl"] = player->playlist->songs[player->playing + nextSong]->iconUrl;
-                    newProperties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[player->playing + nextSong]->artist};
-                    newProperties["xesam:album"] = player->playlist->songs[player->playing + nextSong]->album;
-                    newProperties["xesam:title"] = player->playlist->songs[player->playing + nextSong]->title;
-                    newProperties["xesam:url"] = "file:" + player->playlist->songs[player->playing + nextSong]->path;
+                    newProperties["mpris:artUrl"] = player->playlist->songs[nowPlaying]->iconUrl;
+                    newProperties["xesam:artist"] = std::vector<std::string>{player->playlist->songs[nowPlaying]->artist};
+                    newProperties["xesam:album"] = player->playlist->songs[nowPlaying]->album;
+                    newProperties["xesam:title"] = player->playlist->songs[nowPlaying]->title;
+                    newProperties["xesam:url"] = "file:" + player->playlist->songs[nowPlaying]->path;
                     properties["Metadata"] = newProperties;
                     properties["Position"] = 0;
                 }
@@ -716,7 +721,6 @@ class TerminalGUI : public InterfaceGUI {
                 #endif
                 drawGUI();
             }
-            endwin();
         }
     public:
         TerminalGUI(AudioPlayer *player, PlaylistParser *lists) {
@@ -728,6 +732,7 @@ class TerminalGUI : public InterfaceGUI {
             runInputs = false;
             gui.join();
             echo();
+            endwin();
         }
 };
 #endif
